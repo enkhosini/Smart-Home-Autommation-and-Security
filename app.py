@@ -23,6 +23,10 @@ def get_utc_iso_timestamp():
 def home():
     return render_template("index.html")
 
+@app.route("/cam_livestream", methods=["GET", "POST"])
+def cam_livestream():
+    return render_template("cam_livestream.html")
+
 #all the following app routes will be for the different sensors so that they can send all of their data to the webserver, and the back end infra
 #will be the point that will make decision that involve multiple sensors triggering eachother
 #Handled by Sobonga and Maambele
