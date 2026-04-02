@@ -6,10 +6,13 @@ import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 
+
+
 def get_utc_iso_timestamp():
-    return datetime.now(timezone.utcoffset(+2))\
-        .isoformat()\
-        .replace("+00:00", "Z")
+    return datetime.now(\
+        timezone.utcoffset(+2)).\
+        isoformat().\
+        replace("+00:00", "Z")
 
 #These routes will be for the html pages that will need to be served to the admin/user of the system
 #to be crafted by the front end engineers, Fanelo and Bridgette
@@ -38,22 +41,27 @@ def pir_sensor():
     Json example stucture:
     {
     "device_id": "<members_name>_esp", # example: maambele_esp, fanelo_esp, bridggete_esp, muzi_esp, sobonga_esp
-    "readings": [
+    "readings":
         {
-        "type": "motion",
-        "value": 0,
-        "alert_code": 0 #no issues, 1 = issues present
-        }
-        ],
+        "type": "motion", # motion, light, temperature, humidity, distance [cam not included]
+        "value": 19.598,  # motion will be a boolean 1 and 0
+        "alert_code": 0   # 0 = no issues, 1 = issues present
+        },
     "timestamp": "2026-04-02T14:32:10Z"
     }
     """
 
     data = request.json
-    data["timestamp"] = get_utc_iso_timestamp()
 
-    print(data)
-    return 0
+    device_id = data.get("device_id")
+    readings = data.get("readings", {})
+
+    event_type = readings.get("type")
+    value = readings.get("value")
+
+    print(f"{device_id} | {event_type}: {value}")
+    #print(data)
+    return {"status": "ok"}, 200
 
 @app.route("/cam_module", methods=["GET", "POST"])
 def cam_module():
@@ -61,7 +69,25 @@ def cam_module():
 
 @app.route("/ldr_sensor", methods=["GET", "POST"])
 def ldr_sensor():
-    return 0
+    """
+    JSON:
+    device_id: <bridgette>,
+    readings:{
+        type:light_measure,
+        value:200
+    }
+    """
+    data = request.json
+
+    device_id = data.get("device_id")
+    readings = data.get("readings", {})
+
+    event_type = readings.get("type")
+    value = readings.get("value")
+
+    print(f"{device_id} | {event_type}: {value}")
+
+    return {"status": "ok"}, 200
 
 @app.route("/ultson_sensor", methods=["GET", "POST"])
 def ultson_sensor():
@@ -72,4 +98,4 @@ def dht22_sensor():
     return 0
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)
