@@ -1,8 +1,15 @@
-from flask import Flask, render_template, redirect, request
+from flask import Flask, render_template, redirect, url_for, request
+import json
+from datetime import datetime, timezone
 import pandas as pd
 import matplotlib.pyplot as plt
 
 app = Flask(__name__)
+
+def get_utc_iso_timestamp():
+    return datetime.now(timezone.utcoffset(+2))\
+        .isoformat()\
+        .replace("+00:00", "Z")
 
 #These routes will be for the html pages that will need to be served to the admin/user of the system
 #to be crafted by the front end engineers, Fanelo and Bridgette
@@ -24,8 +31,28 @@ Basic Data flow:
 
 """
 
-@app.route("/pir_sensor", methods=["GET", "POST"])
+@app.route("/pir_sensor", methods=["POST"])
 def pir_sensor():
+    #turn the data into a json
+    """
+    Json example stucture:
+    {
+    "device_id": "<members_name>_esp", # example: maambele_esp, fanelo_esp, bridggete_esp, muzi_esp, sobonga_esp
+    "readings": [
+        {
+        "type": "motion",
+        "value": 0,
+        "alert_code": 0 #no issues, 1 = issues present
+        }
+        ],
+    "timestamp": "2026-04-02T14:32:10Z"
+    }
+    """
+
+    data = request.json
+    data["timestamp"] = get_utc_iso_timestamp()
+
+    print(data)
     return 0
 
 @app.route("/cam_module", methods=["GET", "POST"])
