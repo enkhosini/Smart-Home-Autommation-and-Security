@@ -1,15 +1,15 @@
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, redirect, url_for, request, render_template_string
 import mysql.connector as connector
 import json
 from datetime import datetime, timezone
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 app = Flask(__name__)
 
 #this is the place i intend for the database stuff to worked on in
 # connex = connector.connect(user="grp7_user", password="240_022", )
-
 
 def get_utc_iso_timestamp():
     return datetime.now(\
@@ -41,9 +41,52 @@ Basic Data flow:
 
 """
 
-@app.route("/cam_module", methods=["GET", "POST"])
-def cam_module():
-    return 0
+app = Flask(__name__)
+
+STREAM_DIR = "stream"
+os.makedirs(STREAM_DIR, exist_ok=True)
+
+# ---------------- RECEIVE FRAMES ----------------
+@app.route("/cam_stream", methods=["POST"])
+def cam_stream():
+    img = request.data
+
+    with open(f"{STREAM_DIR}/latest.jpg", "wb") as f:
+        f.write(img)
+
+    return "ok", 200
+
+
+# ---------------- LIVE VIEW PAGE ----------------
+@app.route("/view")
+def view():
+    return render_template_string("""
+    <html>
+    <head>
+        <title>ESP32 Live Stream</title>
+    </head>
+    <body style="margin:0; background:black; display:flex; justify-content:center; align-items:center; height:100vh;">
+        
+        <img id="stream" src="/latest.jpg" style="width:80%; border:2px solid white;">
+
+        <script>
+            setInterval(() => {
+                const img = document.getElementById("stream");
+                img.src = "/latest.jpg?t=" + new Date().getTime();
+            }, 200); // 5 FPS refresh
+        </script>
+
+    </body>
+    </html>
+    """)
+
+# ---------------- SERVE LATEST FRAME ----------------
+@app.route("/latest.jpg")
+def latest():
+    return open(f"{STREAM_DIR}/latest.jpg", "rb").read(), 200, {
+        "Content-Type": "image/jpeg",
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+    }
 
 @app.route("/pir_sensor", methods=["POST"])
 def pir_sensor():
@@ -103,7 +146,7 @@ def ultson_sensor():
     JSON:
     device_id: <fanelo_esp>,
     readings:{
-        type:"centimeter_reading" (),
+        type:"distance" (),
         value:30,
         event: "door_open" or "door_closed"
     }
