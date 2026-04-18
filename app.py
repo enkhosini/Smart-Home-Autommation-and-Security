@@ -56,6 +56,7 @@ def pir_sensor():
         {
         "type": "motion", # motion, light, temperature, humidity, distance [cam not included]
         "value": 19.598,  # motion will be a boolean 1 and 0
+        "event": <event name>
         }
     }
     """
@@ -80,6 +81,7 @@ def ldr_sensor():
     readings:{
         type:lux_reading,
         value:200
+        event: <lights_on> or <lights_off>
     }
     """
 
@@ -126,8 +128,11 @@ def dht22_sensor():
     device_id: <muzi_esp>,
     readings:{[
         {type:temperature_reading,
-        value:25},
-        {type:humidity_reading, value:}
+        value:25
+        event: <fan_on>, <fan_off>},
+
+        {type:humidity_reading, 
+        value:}
     ]}
     }
     """
