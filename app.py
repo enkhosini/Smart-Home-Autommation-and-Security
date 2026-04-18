@@ -101,8 +101,9 @@ def ultson_sensor():
     JSON:
     device_id: <fanelo_esp>,
     readings:{
-        type:meter_reading,
-        value:15cm
+        type:"centimeter_reading" (),
+        value:30,
+        event: "door_open" or "door_closed"
     }
     """
     data = request.json
