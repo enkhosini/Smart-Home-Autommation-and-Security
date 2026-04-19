@@ -104,17 +104,20 @@ def pir_sensor():
     }
     """
 
-    data = request.json
+    if request.method == "POST":
+        data = request.json
 
-    device_id = data.get("device_id")
-    readings = data.get("readings", {})
+        device_id = data.get("device_id")
+        readings = data.get("readings", {})
 
-    event_type = readings.get("type")
-    value = readings.get("value")
+        event_type = readings.get("type")
+        value = readings.get("value")
 
-    print(f"{device_id} | {event_type}: {value}")
-    #print(data)
-    return {"status": "ok"}, 200
+        print(f"{device_id} | {event_type}: {value}")
+        #print(data)
+        return {"status": "ok"}, 200
+    else:
+        return 0
 
 @app.route("/ldr_sensor", methods=["GET", "POST"])
 def ldr_sensor():
