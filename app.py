@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import os
 
 app = Flask(__name__)
-
 #this is the place i intend for the database stuff to worked on in
 # connex = connector.connect(user="grp7_user", password="240_022", )
 
