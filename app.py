@@ -41,8 +41,6 @@ Basic Data flow:
 
 """
 
-app = Flask(__name__)
-
 STREAM_DIR = "stream"
 os.makedirs(STREAM_DIR, exist_ok=True)
 
