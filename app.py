@@ -42,8 +42,9 @@ Basic Data flow:
 """
 
 STREAM_DIR = "stream"
+PHOTO_DIR = "photos"
+os.makedirs(PHOTO_DIR, exist_ok=True)
 os.makedirs(STREAM_DIR, exist_ok=True)
-
 # ---------------- RECEIVE FRAMES ----------------
 @app.route("/cam_stream", methods=["POST"])
 def cam_stream():
@@ -53,9 +54,54 @@ def cam_stream():
         f.write(img)
 
     return "ok", 200
+#-------------UPLOAD PHOTOS---------------------
 
+@app.route("/upload_photo", methods=["POST"])
+def upload_photo():
+    img = request.data
 
-# ---------------- LIVE VIEW PAGE ----------------
+    filename = datetime.now().strftime("%Y%m%d_%H%M%S.jpg")
+    filepath = os.path.join(PHOTO_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(img)
+
+    print(f"[PHOTO SAVED] {filename}")
+
+    return {"status": "saved"}, 200
+#----------------GALLERY--------------------------
+@app.route("/gallery")
+def gallery():
+    images = os.listdir(PHOTO_DIR)
+    images.sort(reverse=True)
+
+    html = "<h1 style='text-align:center;'>Captured Images</h1>"
+    html += "<div style='display:flex; flex-wrap:wrap; justify-content:center;'>"
+
+    for img in images:
+        html += f"""
+        <div style='margin:10px;'>
+            <img src="/photos/{img}" width="300"><br>
+            <p style='text-align:center;'>{img}</p>
+        </div>
+        """
+
+    html += "</div>"
+    return html
+#-----------------IMAGE SERVUNG ROUTE-------------
+
+@app.route("/photos/<filename>")
+def get_photo(filename):
+    path = os.path.join(PHOTO_DIR, filename)
+
+    if not os.path.exists(path):
+        return "Not found", 404
+
+    return open(path, "rb").read(), 200, {
+        "Content-Type": "image/jpeg"
+    }
+    
+#---------------- LIVE VIEW PAGE ----------------
 @app.route("/view")
 def view():
     return render_template_string("""
@@ -81,7 +127,12 @@ def view():
 # ---------------- SERVE LATEST FRAME ----------------
 @app.route("/latest.jpg")
 def latest():
-    return open(f"{STREAM_DIR}/latest.jpg", "rb").read(), 200, {
+    path = f"{STREAM_DIR}/latest.jpg"
+
+    if not os.path.exists(path):
+        return "No stream yet", 404
+
+    return open(path, "rb").read(), 200, {
         "Content-Type": "image/jpeg",
         "Cache-Control": "no-cache, no-store, must-revalidate"
     }
