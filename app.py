@@ -42,11 +42,11 @@ Basic Data flow:
 """
 
 STREAM_DIR = "stream"
-PHOTO_DIR = "photos"
+PHOTO_DIR = "photos/"
 os.makedirs(PHOTO_DIR, exist_ok=True)
 os.makedirs(STREAM_DIR, exist_ok=True)
 # ---------------- RECEIVE FRAMES ----------------
-@app.route("/cam_stream", methods=["POST"])
+@app.route("/cam_stream", methods=["POST", "GET"])
 def cam_stream():
     img = request.data
 
@@ -56,11 +56,11 @@ def cam_stream():
     return "ok", 200
 #-------------UPLOAD PHOTOS---------------------
 
-@app.route("/upload_photo", methods=["POST"])
+@app.route("/upload_photo", methods=["POST","GET"])
 def upload_photo():
     img = request.data
 
-    filename = datetime.now().strftime("%Y%m%d_%H%M%S.jpg")
+    filename = datetime.now().strftime("%Y%m%d_%H%M%S.jpg") 
     filepath = os.path.join(PHOTO_DIR, filename)
 
     with open(filepath, "wb") as f:
@@ -69,6 +69,7 @@ def upload_photo():
     print(f"[PHOTO SAVED] {filename}")
 
     return {"status": "saved"}, 200
+
 #----------------GALLERY--------------------------
 @app.route("/gallery")
 def gallery():
@@ -88,6 +89,8 @@ def gallery():
 
     html += "</div>"
     return html
+
+
 #-----------------IMAGE SERVUNG ROUTE-------------
 
 @app.route("/photos/<filename>")
@@ -161,8 +164,9 @@ def pir_sensor():
 
         event_type = readings.get("type")
         value = readings.get("value")
+        is_armed = readings.get("isArmed", False)
 
-        print(f"{device_id} | {event_type}: {value}")
+        print(f"{device_id} | {event_type}: {value} | armed: {is_armed}")
         #print(data)
         return {"status": "ok"}, 200
     else:
