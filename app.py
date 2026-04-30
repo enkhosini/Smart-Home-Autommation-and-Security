@@ -172,17 +172,11 @@ def pir_sensor():
     else:
         return 0
 
-@app.route("/ldr_sensor", methods=["GET", "POST"])
-def ldr_sensor():
-    """
-    JSON:
-    device_id: <bridgette_esp>,
-    readings:{
-        type:lux_reading,
-        value:200
-        event: <lights_on> or <lights_off>
-    }
-    """
+# PIR SENSOR
+# =====================================================
+
+@app.route("/pir_sensor", methods=["POST"])
+def pir_sensor():
 
     data = request.json
 
@@ -191,10 +185,86 @@ def ldr_sensor():
 
     event_type = readings.get("type")
     value = readings.get("value")
+    is_armed = readings.get("isArmed", False)
 
-    print(f"{device_id} | {event_type}: {value}")
+    print(f"{device_id} | {event_type}: {value} | armed: {is_armed}")
 
     return {"status": "ok"}, 200
+
+# LDR SENSOR 
+# =====================================================
+
+# stores latest values
+latest_ldr = {
+    "device_id": "",
+    "value": 0,
+    "event": "",
+    "time": ""
+}
+
+@app.route("/ldr_sensor", methods=["GET", "POST"])
+def ldr_sensor():
+
+    global latest_ldr
+
+    if request.method == "POST":
+
+        data = request.json
+
+        device_id = data.get("device_id")
+        readings = data.get("readings", {})
+
+        event_type = readings.get("type")
+        value = readings.get("value")
+        event = readings.get("event")
+
+        current_time = datetime.now().strftime("%H:%M:%S")
+
+        latest_ldr["device_id"] = device_id
+        latest_ldr["value"] = value
+        latest_ldr["event"] = event
+        latest_ldr["time"] = current_time
+
+        print("================================")
+        print("LDR SENSOR DATA RECEIVED")
+        print("Device ID :", device_id)
+        print("Type      :", event_type)
+        print("Value     :", value)
+        print("Event     :", event)
+        print("Time      :", current_time)
+        print("================================")
+
+        return jsonify({"status": "ok"}), 200
+
+    return jsonify(latest_ldr)
+
+# =====================================================
+# LDR DASHBOARD PAGE
+# =====================================================
+
+@app.route("/ldr_dashboard")
+def ldr_dashboard():
+
+    return render_template_string(f"""
+    <html>
+    <head>
+        <title>LDR Dashboard</title>
+        <meta http-equiv="refresh" content="2">
+    </head>
+
+    <body style="font-family:Arial; text-align:center; margin-top:60px;">
+
+        <h1>LDR SENSOR LIVE DATA</h1>
+
+        <h2>Device: {latest_ldr["device_id"]}</h2>
+        <h2>Light Value: {latest_ldr["value"]}</h2>
+        <h2>Status: {latest_ldr["event"]}</h2>
+        <h2>Updated: {latest_ldr["time"]}</h2>
+
+    </body>
+    </html>
+    """)
+
 
 @app.route("/ultson_sensor", methods=["GET", "POST"])
 def ultson_sensor():
