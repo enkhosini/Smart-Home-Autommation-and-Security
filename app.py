@@ -37,7 +37,6 @@ Basic Data flow:
 3. Then the data is logged into the sql database for recording purposes
 4. Then after decisions are made with the data that has been captured [like turning on another sensor or sending a certain signal to that esp or even something in the server]
 5. the app route must end with an informative exit code
-
 """
 
 STREAM_DIR = "stream"
@@ -53,8 +52,8 @@ def cam_stream():
         f.write(img)
 
     return "ok", 200
-#-------------UPLOAD PHOTOS---------------------
 
+#-------------UPLOAD PHOTOS---------------------
 @app.route("/upload_photo", methods=["POST","GET"])
 def upload_photo():
     img = request.data
@@ -163,7 +162,9 @@ def pir_sensor():
 
         event_type = readings.get("type")
         value = readings.get("value")
-        is_armed = readings.get("isArmed", False)
+        is_armed = readings.get("isArmed")
+
+
 
         print(f"{device_id} | {event_type}: {value} | armed: {is_armed}")
         #print(data)
