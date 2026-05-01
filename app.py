@@ -1,6 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, render_template_string
 import mysql.connector as connector
-import json
 from datetime import datetime, timezone
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,7 +7,13 @@ import os
 
 app = Flask(__name__)
 #this is the place i intend for the database stuff to worked on in
-# connex = connector.connect(user="grp7_user", password="240_022", )
+def get_connection():
+    connector.connect(
+        host = "localhost",
+        user = "root",
+        password = "root",
+        database = "ga_db"
+    )
 
 def get_utc_iso_timestamp():
     return datetime.now(\
@@ -21,6 +26,18 @@ def get_utc_iso_timestamp():
 @app.route("/", methods=["GET", "POST"])
 def home():
     return render_template("index.html")
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    return render_template("signup.html")
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    return render_template("login.html")
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+    return render_template("admin.html")
 
 @app.route("/cam_livestream", methods=["GET", "POST"])
 def cam_livestream():
@@ -164,32 +181,16 @@ def pir_sensor():
         value = readings.get("value")
         is_armed = readings.get("isArmed")
 
-
-
         print(f"{device_id} | {event_type}: {value} | armed: {is_armed}")
+
+        with get_connection() as conn:
+            cursor = conn.cursor
+            cursor.execute("")
+
         #print(data)
         return {"status": "ok"}, 200
     else:
         return 0
-
-# PIR SENSOR
-# =====================================================
-
-@app.route("/pir_sensor", methods=["POST"])
-def pir_sensor():
-
-    data = request.json
-
-    device_id = data.get("device_id")
-    readings = data.get("readings", {})
-
-    event_type = readings.get("type")
-    value = readings.get("value")
-    is_armed = readings.get("isArmed", False)
-
-    print(f"{device_id} | {event_type}: {value} | armed: {is_armed}")
-
-    return {"status": "ok"}, 200
 
 # LDR SENSOR 
 # =====================================================
@@ -234,9 +235,7 @@ def ldr_sensor():
         print("Time      :", current_time)
         print("================================")
 
-        return jsonify({"status": "ok"}), 200
-
-    return jsonify(latest_ldr)
+        return {"status": "ok"}, 200
 
 # =====================================================
 # LDR DASHBOARD PAGE
@@ -323,4 +322,4 @@ def dht22_sensor():
     return {"status": "ok"}, 200
 
 if __name__ == "__main__":
-    app.run(debug=True, host="10.10.10.1", port=5000)
+   app.run(debug=True, host="10.10.10.1", port=5000)
