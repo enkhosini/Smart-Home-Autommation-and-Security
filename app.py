@@ -148,6 +148,8 @@ os.makedirs(STREAM_DIR, exist_ok=True)
 
 
 
+
+
 @app.route("/pir_sensor", methods=["POST", "GET"])
 def pir_sensor():
     #turn the data into a json
