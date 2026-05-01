@@ -107,7 +107,21 @@ def login():
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
-    return render_template("admin.html")
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    sensors = {}
+
+    sensor_types = ["LDR", "PIR", "TEMP", "HUMIDITY", "ULTRASONIC"]
+
+    for sensor in sensor_types:
+        cursor.execute(
+            "SELECT * FROM sensor_data WHERE sensor_type=%s ORDER BY id DESC LIMIT 1",
+            (sensor,)
+        )
+        sensors[sensor] = cursor.fetchone()
+
+    return render_template("admin.html", sensors=sensors)
 
 @app.route("/dht", methods=["GET", "POST"])
 def dht():
@@ -311,32 +325,6 @@ def ldr_sensor():
 
         return {"status": "ok"}, 200
 
-# =====================================================
-# LDR DASHBOARD PAGE
-# =====================================================
-
-@app.route("/ldr_dashboard")
-def ldr_dashboard():
-
-    return render_template_string(f"""
-    <html>
-    <head>
-        <title>LDR Dashboard</title>
-        <meta http-equiv="refresh" content="2">
-    </head>
-
-    <body style="font-family:Arial; text-align:center; margin-top:60px;">
-
-        <h1>LDR SENSOR LIVE DATA</h1>
-
-        <h2>Device: {latest_ldr["device_id"]}</h2>
-        <h2>Light Value: {latest_ldr["value"]}</h2>
-        <h2>Status: {latest_ldr["event"]}</h2>
-        <h2>Updated: {latest_ldr["time"]}</h2>
-
-    </body>
-    </html>
-    """)
 
 
 @app.route("/ultson_sensor", methods=["GET", "POST"])
