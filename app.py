@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, render_template_string
+from flask import Flask, render_template, redirect, url_for, request, render_template_string, send_file
 import mysql.connector as connector
 from datetime import datetime, timezone
 import pandas as pd
@@ -147,7 +147,151 @@ os.makedirs(PHOTO_DIR, exist_ok=True)
 os.makedirs(STREAM_DIR, exist_ok=True)
 
 
+@app.route("/cam_stream", methods=["POST"])
+def cam_stream():
 
+    img = request.data
+
+    with open("stream/latest.jpg", "wb") as f:
+        f.write(img)
+
+    return "ok", 200
+
+# ======================================================
+# RECEIVE MOTION PHOTO FROM ESP32-CAM
+# ESP sends POST to /upload_photo
+# ======================================================
+@app.route("/upload_photo", methods=["POST"])
+def upload_photo():
+
+    img = request.data
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        INSERT INTO camera_events (image)
+        VALUES (%s)
+        """, (img,))
+
+        conn.commit()
+
+    print("PHOTO SAVED TO DATABASE")
+
+    return {"status": "saved"}, 200
+
+# ======================================================
+# LIVE VIEW PAGE
+# ======================================================
+@app.route("/view")
+def view():
+    return render_template("cam_livestream.html")
+
+# ======================================================
+# SERVE LATEST FRAME
+# ======================================================
+@app.route("/latest.jpg")
+def latest():
+
+    path = "stream/latest.jpg"
+
+    if not os.path.exists(path):
+        return "No Stream Yet", 404
+
+    return open(path, "rb").read(), 200, {
+        "Content-Type": "image/jpeg",
+        "Cache-Control": "no-cache"
+    }
+
+# ======================================================
+# CAMERA GALLERY
+# ======================================================
+@app.route("/gallery")
+def gallery():
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT id, event_time
+        FROM camera_events
+        ORDER BY id DESC
+        """)
+
+        rows = cursor.fetchall()
+        html = """<h1 style='text-align:center;'>Captured Motion Photos</h1>
+                  <div style='display:flex;flex-wrap:wrap;justify-content:center;'>
+            """
+
+    for row in rows:
+        html += f"""
+        <div style='margin:10px;text-align:center;'>
+            <img src='/photo/{row[0]}' width='300'><br>
+            {row[1]}
+        </div>
+        """
+    html += "</div>"
+
+    return html
+
+
+# ======================================================
+# SHOW SINGLE PHOTO
+# ======================================================
+@app.route("/photo/<int:id>")
+def photo(id):
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        SELECT image FROM camera_events
+        WHERE id=%s
+        """, (id,))
+
+        row = cursor.fetchone()
+
+    if row:
+        return row[0], 200, {
+            "Content-Type": "image/jpeg"
+        }
+
+    return "Not Found", 404
+
+
+# ======================================================
+# GRAPH USING PANDAS
+# ======================================================
+@app.route("/camera_graph")
+def camera_graph():
+
+    with get_connection() as conn:
+        df = pd.read_sql("""
+        SELECT event_time
+        FROM camera_events
+        """, conn)
+
+    if df.empty:
+        return "<h2>No Camera Data Yet</h2>"
+
+    df["event_time"] = pd.to_datetime(df["event_time"])
+    df["hour"] = df["event_time"].dt.hour
+
+    counts = df.groupby("hour").size()
+
+    plt.figure(figsize=(10,5))
+    counts.plot(kind="bar")
+
+    plt.title("Motion Detections Per Hour")
+    plt.xlabel("Hour")
+    plt.ylabel("Captures")
+    plt.tight_layout()
+
+    file_path = "static/camera_graph.png"  # save to static folder
+    plt.savefig(file_path)
+    plt.close()
+
+    return send_file(file_path, mimetype="image/png")
 
 
 @app.route("/pir_sensor", methods=["POST", "GET"])
