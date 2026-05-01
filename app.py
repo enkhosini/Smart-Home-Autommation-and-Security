@@ -86,50 +86,39 @@ def login():
                         return redirect("/pir_sensor")
                     case "218541309@edu.vut.ac.za":
                         # ldr
-                        return redirect("/ldr")
+                        return redirect("/ldr_sensor")
                     case "224303635@edu.vut.ac.za":
                         # ultra
-                        return redirect("/ultrasonic")
+                        return redirect("/ultson_sensor")
                     case "240716574@edu.vut.ac.za":
                         # cam
                         return redirect("/camera")
                     case "221569766@edu.vut.ac.za":
                         # dht22
-                        return redirect("/dht")
+                        return redirect("/dht22_sensor")
                     case "admin@edu.vut.ac.za":
                         # dht22
                         return redirect("/admin")
             else:
                 print("Invalid password")
-                return redirect("/")
+                return redirect(url_for("/"))
 
     return render_template("login.html")
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
-    if "user" not in session:
-        return redirect(url_for("login"))
+    # sensor_types = ["LDR", "PIR", "TEMP", "HUMIDITY", "ULTRASONIC"]
 
-    sensors = {}
+    # disply all the logs and graphs for the sensors
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        pass
 
-    sensor_types = ["LDR", "PIR", "TEMP", "HUMIDITY", "ULTRASONIC"]
-
-    for sensor in sensor_types:
-        cursor.execute(
-            "SELECT * FROM sensor_data WHERE sensor_type=%s ORDER BY id DESC LIMIT 1",
-            (sensor,)
-        )
-        sensors[sensor] = cursor.fetchone()
-
-    return render_template("admin.html", sensors=sensors)
+    return render_template("admin.html", sensors = 0)
 
 @app.route("/dht", methods=["GET", "POST"])
 def dht():
     return render_template("dht.html")
-
-@app.route("/cam_livestream", methods=["GET", "POST"])
-def cam_livestream():
-    return render_template("cam_livestream.html")
 
 #all the following app routes will be for the different sensors so that they can send all of their data to the webserver, and the back end infra
 #will be the point that will make decision that involve multiple sensors triggering eachother
