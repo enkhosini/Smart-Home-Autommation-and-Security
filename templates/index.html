@@ -10,7 +10,7 @@
 <body>
 
 <ul class="navbar">
-  <li><a href="index.html">Home</a></li>
+  <li><a href="#">Home</a></li>
 
   <li class="dropdown">
     <a href="#">Sensor_unit</a>
@@ -20,13 +20,12 @@
       <li><a href={{ url_for('login') }}>LDR sensor</a></li>
       <li><a href={{ url_for('login') }}>DHT22 sensor</a></li>
       <li><a href={{ url_for('login') }}>PIR sensor</a></li>
-  
     </ul>
   </li>
 
-  <li><a href="about.html">About-us</a></li>
-  <li><a href="resouces.html">Resources</a></li>
-  <li><a href="#">Admin</a></li>
+  <!-- <li><a href="{{ url_for("about") }}">About-us</a></li> -->
+  <li><a href="{{ url_for("team") }}">Team</a></li>
+  <li><a href="{{ url_for("login") }}">Admin</a></li>
 </ul>
 
 <section class="home">

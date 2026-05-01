@@ -116,6 +116,14 @@ def admin():
 
     return render_template("admin.html", sensors = 0)
 
+@app.route("/about", methods=["GET", "POST"])
+def about():
+    return render_template("about")
+
+@app.route("/team", methods=["GET", "POST"])
+def team():
+    return render_template("team.html")
+
 @app.route("/dht", methods=["GET", "POST"])
 def dht():
     return render_template("dht.html")
@@ -372,8 +380,8 @@ def dht22_sensor():
 
     return {"status": "ok"}, 200
 
-# if __name__ == "__main__":
-#    app.run(debug=True, host="10.10.10.1", port=5000)
-
 if __name__ == "__main__":
-   app.run(debug=True, host="0.0.0.0", port=5000)
+   app.run(debug=True, host="10.10.10.1", port=5000)
+
+# if __name__ == "__main__":
+#    app.run(debug=True, host="0.0.0.0", port=5000)
