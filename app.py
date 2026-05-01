@@ -156,40 +156,33 @@ def cam_stream():
     return "ok", 200
 
 #-------------UPLOAD PHOTOS---------------------
-@app.route("/upload_photo", methods=["POST","GET"])
+@app.route("/upload_photo", methods=["POST"])
 def upload_photo():
     img = request.data
-
-    filename = datetime.now().strftime("%Y%m%d_%H%M%S.jpg") 
-    filepath = os.path.join(PHOTO_DIR, filename)
-
-    with open(filepath, "wb") as f:
-        f.write(img)
-
-    print(f"[PHOTO SAVED] {filename}")
-
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        sql = """INSERT INTO camera_events (image) VALUES (%s)"""
+        cursor.execute(sql, (img,))
+        conn.commit()
+        print("PHOTO SAVED TO DATABASE")
     return {"status": "saved"}, 200
 
 #----------------GALLERY--------------------------
-@app.route("/gallery")
-def gallery():
-    images = os.listdir(PHOTO_DIR)
-    images.sort(reverse=True)
+@app.route("/camera_gallery")
+def camera_gallery():    
+    with get_connection() as conn:
+        cursor = conn.cursor()        
+        cursor.execute("""SELECT id, event_time FROM camera_events\
+            ORDER BY id DESC        """)
+        rows = cursor.fetchall()    
+        html = "<h1>Camera Captures</h1>"    
+        for row in rows:        
+            html += f"""<div style='margin:20px;'><img src='/camera_image/{row[0]}' width='300'><br>{row[1]}</div>"""
+        return html
 
-    html = "<h1 style='text-align:center;'>Captured Images</h1>"
-    html += "<div style='display:flex; flex-wrap:wrap; justify-content:center;'>"
+# @app.route("/camera_image/<int:id>")def camera_image(id):    with get_connection() as conn:        cursor = conn.cursor()        cursor.execute("""        SELECT image FROM camera_events        WHERE id=%s        """, (id,))        row = cursor.fetchone()    if row:        return row[0], 200, {"Content-Type": "image/jpeg"}    return "Not found", 404
 
-    for img in images:
-        html += f"""
-        <div style='margin:10px;'>
-            <img src="/photos/{img}" width="300"><br>
-            <p style='text-align:center;'>{img}</p>
-        </div>
-        """
-
-    html += "</div>"
-    return html
-
+# @app.route("/camera_graph")def camera_graph():    with get_connection() as conn:        df = pd.read_sql("""        SELECT event_time        FROM camera_events        """, conn)    df["event_time"] = pd.to_datetime(df["event_time"])    df["hour"] = df["event_time"].dt.hour    counts = df.groupby("hour").size()    plt.figure(figsize=(10,5))    counts.plot(kind="bar")    plt.title("Camera Motion Detections Per Hour")    plt.xlabel("Hour")    plt.ylabel("Detections")    plt.tight_layout()    graph_path = "static/camera_graph.png"    plt.savefig(graph_path)    return f"<img src='/{graph_path}'>"
 
 #-----------------IMAGE SERVUNG ROUTE-------------
 

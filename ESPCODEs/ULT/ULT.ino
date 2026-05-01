@@ -7,6 +7,9 @@
 const char* ssid = "A67C";
 const char* password = "ga_group7";
 
+IPAddress local_IP(10, 10, 10, 7);
+IPAddress subnet(255, 255, 255, 0);
+
 // ===== Pins =====
 
 int led = 27;
@@ -50,31 +53,31 @@ void setup() {
 }
 
 // ===== Fetch armed state from Flask =====
-void fetchArmedState() {
-  if (WiFi.status() != WL_CONNECTED) return;
+// void fetchArmedState() {
+//   if (WiFi.status() != WL_CONNECTED) return;
 
-  HTTPClient http;
-  http.begin("http://10.10.10.1:5000/ultson_sensor");
+//   HTTPClient http;
+//   http.begin("http://10.10.10.1:5000/ultson_sensor");
 
-  int code = http.GET();
+//   int code = http.GET();
 
-  if (code == 200) {
-    String payload = http.getString();
+//   if (code == 200) {
+//     String payload = http.getString();
 
-    StaticJsonDocument<200> doc;
-    DeserializationError err = deserializeJson(doc, payload);
+//     StaticJsonDocument<200> doc;
+//     DeserializationError err = deserializeJson(doc, payload);
 
-    if (!err) {
-      armed = doc["armed"];
-      Serial.print("Armed: ");
-      Serial.println(armed);
-    }
-  } else {
-    Serial.println("Failed to fetch armed state");
-  }
+//     if (!err) {
+//       armed = doc["armed"];
+//       Serial.print("Armed: ");
+//       Serial.println(armed);
+//     }
+//   } else {
+//     Serial.println("Failed to fetch armed state");
+//   }
 
-  http.end();
-}
+//   http.end();
+// }
 
 // ===== Send JSON log to Flask =====
 void sendLog(float distance, String event) {
