@@ -8,10 +8,11 @@ import os
 app = Flask(__name__)
 #this is the place i intend for the database stuff to worked on in
 def get_connection():
-    connector.connect(
+    return connector.connect(
         host = "localhost",
+        port = 3306,
         user = "root",
-        password = "root",
+        password = "labadmin",
         database = "ga_db"
     )
 
@@ -29,15 +30,88 @@ def home():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
+    if request.method == "POST":
+        data = request.form
+        acc_email = data.get("email")
+        acc_password = data.get("password")
+
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            # 1. Check if user already exists
+            query = "SELECT * FROM users WHERE email = %s"
+            cursor.execute(query, (acc_email,))
+            result = cursor.fetchone()
+
+            if result:
+                return render_template("signup.html", msg="User already exists")
+
+            # 3. Insert new user
+            insert_query = "INSERT INTO users (email, passwrd) VALUES (%s, %s)"
+            cursor.execute(insert_query, (acc_email, acc_password))
+            conn.commit()
+
+            print("User created successfully!")
+            return redirect("/login")
     return render_template("signup.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "POST":
+        data = request.form
+
+        acc_email = data.get("email")
+        acc_password = data.get("password")
+        print(data)
+
+        # now to do pass validation
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            query = "SELECT passwrd FROM users WHERE email = %s"
+            cursor.execute(query, (acc_email,))
+
+            result = cursor.fetchone()
+            print(result)
+
+            if not result:
+                print("User not found")
+                # output USER NOT FOUND ON THE LOGIN SCREEN
+                return render_template("login.html", msg = "User not found")
+            stored_password = result[0]
+            
+            if acc_password == stored_password:
+                print("Login successful!")
+                match  acc_email:
+                    case "240254260@edu.vut.ac.za":
+                        # pir
+                        return redirect("/pir_sensor")
+                    case "218541309@edu.vut.ac.za":
+                        # ldr
+                        return redirect("/ldr")
+                    case "224303635@edu.vut.ac.za":
+                        # ultra
+                        return redirect("/ultrasonic")
+                    case "240716574@edu.vut.ac.za":
+                        # cam
+                        return redirect("/camera")
+                    case "221569766@edu.vut.ac.za":
+                        # dht22
+                        return redirect("/dht")
+                    case "admin@edu.vut.ac.za":
+                        # dht22
+                        return redirect("/admin")
+            else:
+                print("Invalid password")
+                return redirect("/")
+
     return render_template("login.html")
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
     return render_template("admin.html")
+
+@app.route("/dht", methods=["GET", "POST"])
+def dht():
+    return render_template("dht.html")
 
 @app.route("/cam_livestream", methods=["GET", "POST"])
 def cam_livestream():
@@ -155,7 +229,7 @@ def latest():
         "Cache-Control": "no-cache, no-store, must-revalidate"
     }
 
-@app.route("/pir_sensor", methods=["POST"])
+@app.route("/pir_sensor", methods=["POST", "GET"])
 def pir_sensor():
     #turn the data into a json
     """
@@ -190,7 +264,7 @@ def pir_sensor():
         #print(data)
         return {"status": "ok"}, 200
     else:
-        return 0
+        return render_template("pir.html")
 
 # LDR SENSOR 
 # =====================================================
@@ -321,5 +395,8 @@ def dht22_sensor():
 
     return {"status": "ok"}, 200
 
+# if __name__ == "__main__":
+#    app.run(debug=True, host="10.10.10.1", port=5000)
+
 if __name__ == "__main__":
-   app.run(debug=True, host="10.10.10.1", port=5000)
+   app.run(debug=True, host="0.0.0.0", port=5000)
