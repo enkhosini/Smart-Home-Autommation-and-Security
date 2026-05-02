@@ -323,7 +323,8 @@ def pir_sensor():
 
         with get_connection() as conn:
             cursor = conn.cursor
-            cursor.execute("INSERT INTO  ")
+            cursor.execute("INSERT INTO sensor_readings_log \
+                            VALUES() ")
 
         #print(data)
         return {"status": "ok"}, 200
