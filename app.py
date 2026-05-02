@@ -208,7 +208,6 @@ def latest():
 # ======================================================
 @app.route("/gallery")
 def gallery():
-
     with get_connection() as conn:
         cursor = conn.cursor()
 
@@ -324,7 +323,7 @@ def pir_sensor():
 
         with get_connection() as conn:
             cursor = conn.cursor
-            cursor.execute("")
+            cursor.execute("INSERT INTO  ")
 
         #print(data)
         return {"status": "ok"}, 200
@@ -398,6 +397,8 @@ def ultson_sensor():
     value = readings.get("value")
 
     print(f"{device_id} | {event_type}: {value}")
+
+
 
     return {"status": "ok"}, 200
 
