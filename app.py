@@ -22,6 +22,7 @@ def get_utc_iso_timestamp():
         isoformat().\
         replace("+00:00", "Z")
 
+
 #These routes will be for the html pages that will need to be served to the admin/user of the system
 #to be crafted by the front end engineers, Fanelo and Bridgette
 @app.route("/", methods=["GET", "POST"])
@@ -309,6 +310,7 @@ def pir_sensor():
     }
     """
 
+
     if request.method == "POST":
         data = request.json
 
@@ -322,11 +324,10 @@ def pir_sensor():
         print(f"{device_id} | {event_type}: {value} | armed: {is_armed}")
 
         with get_connection() as conn:
-            cursor = conn.cursor
-            cursor.execute("INSERT INTO sensor_readings_log \
-                            VALUES() ")
-
-        #print(data)
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO sensor_readings_log (time_stamp, reading_value, device_id) VALUES (%s, %s, %s)",
+                            (get_utc_iso_timestamp(), value, device_id))
+            print(get_utc_iso_timestamp())
         return {"status": "ok"}, 200
     else:
         return render_template("pir.html")
@@ -389,19 +390,20 @@ def ultson_sensor():
         event: "door_open" or "door_closed"
     }
     """
-    data = request.json
+    if request.method == "POST":
+        data = request.json
 
-    device_id = data.get("device_id")
-    readings = data.get("readings", {})
+        device_id = data.get("device_id")
+        readings = data.get("readings", {})
 
-    event_type = readings.get("type")
-    value = readings.get("value")
+        event_type = readings.get("type")
+        value = readings.get("value")
+        event = readings.get("event")   # <-- was never being read
+        print(f"{device_id} | {event_type}: {value}")
 
-    print(f"{device_id} | {event_type}: {value}")
-
-
-
-    return {"status": "ok"}, 200
+        return {"status": "ok"}, 200
+    else:
+        return "ultson endpoint"
 
 @app.route("/dht22_sensor", methods=["GET", "POST"])
 def dht22_sensor():
