@@ -1,11 +1,246 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camera — GA Security</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #e74c3c;
+    }
+    header h1 { font-size: 1.4rem; color: #fff; }
+    header span { background: #e74c3c; color: #fff; padding: 2px 10px;
+                  border-radius: 4px; font-size: 0.75rem; font-weight: 700;
+                  animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .container { max-width: 1200px; margin: 32px auto; padding: 0 24px; }
+
+    /* ── Section headings ───────────────────────────────────────────────── */
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #e74c3c;
+      border-left: 4px solid #e74c3c;
+      padding-left: 10px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Live stream ────────────────────────────────────────────────────── */
+    .live-wrap {
+      background: #1a1a1a;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 36px;
+      border: 1px solid #2a2a2a;
+    }
+    .live-wrap .bar {
+      background: #e74c3c;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .live-wrap .bar::before {
+      content: '●';
+      animation: pulse 1.2s infinite;
+    }
+    .live-frame {
+      width: 100%;
+      display: block;
+      max-height: 480px;
+      object-fit: contain;
+      background: #000;
+    }
+    .no-stream {
+      text-align: center;
+      padding: 64px;
+      color: #555;
+      font-size: 0.95rem;
+    }
+
+    /* ── Graph ──────────────────────────────────────────────────────────── */
+    .graph-wrap {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 36px;
+      border: 1px solid #2a2a2a;
+      text-align: center;
+    }
+    .graph-wrap img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin-top: 12px;
+    }
+    .refresh-btn {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 8px 20px;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .refresh-btn:hover { background: #c0392b; }
+
+    /* ── Gallery ────────────────────────────────────────────────────────── */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .photo-card {
+      background: #1a1a1a;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #2a2a2a;
+      transition: transform .2s, border-color .2s;
+    }
+    .photo-card:hover { transform: translateY(-3px); border-color: #e74c3c; }
+    .photo-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-card .meta {
+      padding: 8px 10px;
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .photo-card .meta strong { display: block; color: #ccc; margin-bottom: 2px; }
+    .empty-gallery {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 48px;
+      color: #555;
+    }
+
+    /* ── Cap notice ─────────────────────────────────────────────────────── */
+    .cap-notice {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-left: 4px solid #f39c12;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      font-size: 0.85rem;
+      color: #bbb;
+    }
+    .cap-notice strong { color: #f39c12; }
+  </style>
 </head>
 <body>
-    <a href="login.html"></a>
+
+<header>
+  <h1>GA Security — Camera Module</h1>
+  <span>LIVE</span>
+</header>
+
+<div class="container">
+
+  <!-- ── Live Stream ──────────────────────────────────────────────────── -->
+  <div class="section-title">Live Stream</div>
+  <div class="live-wrap">
+    <div class="bar">LIVE FEED</div>
+    <img id="liveImg"
+         class="live-frame"
+         src="/latest.jpg"
+         alt="Live stream"
+         onerror="this.style.display='none'; document.getElementById('noStream').style.display='block';" />
+    <div id="noStream" class="no-stream" style="display:none;">
+      No stream signal — waiting for ESP32-CAM…
+    </div>
+  </div>
+
+  <!-- ── Motion Graph ─────────────────────────────────────────────────── -->
+  <div class="section-title">Motion Activity Graph (Last 10 Captures)</div>
+  <div class="graph-wrap">
+    <img id="graphImg" src="/camera_graph" alt="Motion graph" />
+    <br/>
+    <button class="refresh-btn" onclick="refreshGraph()">⟳ Refresh Graph</button>
+  </div>
+
+  <!-- ── Photo Gallery ────────────────────────────────────────────────── -->
+  <div class="section-title">Captured Photos</div>
+  <div class="cap-notice">
+    <strong>Auto-clean enabled:</strong>
+    The system keeps the <strong>10 most recent</strong> motion captures.
+    Older photos are deleted automatically when a new one arrives.
+  </div>
+
+  <div class="gallery-grid">
+    {% if photos %}
+      {% for photo_id, event_time in photos %}
+      <div class="photo-card">
+        <a href="/photo/{{ photo_id }}" target="_blank">
+          <img src="/photo/{{ photo_id }}" alt="Capture #{{ photo_id }}" loading="lazy" />
+        </a>
+        <div class="meta">
+          <strong>Capture #{{ photo_id }}</strong>
+          {{ event_time.strftime('%Y-%m-%d %H:%M:%S') if event_time else 'Unknown time' }}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-gallery">No motion captures yet.</div>
+    {% endif %}
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  // ── Refresh live feed every 1 second ──────────────────────────────────
+  function refreshLive() {
+    const img = document.getElementById('liveImg');
+    const noStream = document.getElementById('noStream');
+    const url = '/latest.jpg?t=' + Date.now();
+    const tmp = new Image();
+    tmp.onload = () => {
+      img.src = url;
+      img.style.display = 'block';
+      noStream.style.display = 'none';
+    };
+    tmp.onerror = () => {
+      img.style.display = 'none';
+      noStream.style.display = 'block';
+    };
+    tmp.src = url;
+  }
+  setInterval(refreshLive, 1000);
+
+  // ── Refresh graph ──────────────────────────────────────────────────────
+  function refreshGraph() {
+    document.getElementById('graphImg').src = '/camera_graph?t=' + Date.now();
+  }
+
+  // Auto-refresh gallery + graph every 10 seconds
+  setInterval(() => {
+    refreshGraph();
+    // Reload the page gently to pick up new gallery photos
+    // (a lightweight alternative would be an AJAX call for photo IDs)
+    location.reload();
+  }, 10000);
+</script>
 </body>
 </html>
