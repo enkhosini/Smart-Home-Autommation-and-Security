@@ -10,17 +10,17 @@
 // =====================================================
 // WIFI
 // =====================================================
-const char* ssid     = "Maambele";
-const char* password = "@Onepiece0907";
+const char* ssid     = "A67C";
+const char* password = "ga_group7";
 
-IPAddress local_IP(172, 20, 10, 6);
-IPAddress gateway(172, 20, 10, 2);
+IPAddress local_IP(10, 192, 156, 66);
+IPAddress gateway(10, 192, 156, 61);
 IPAddress subnet(255, 255, 255, 0);
 
 // =====================================================
 // FLASK SERVER
 // =====================================================
-const char* serverURL = "http://172.20.10.2:5000/dht22_sensor";
+const char* serverURL = "http://10.192.156.61:5000/dht22_sensor";
 
 // =====================================================
 // PINS
