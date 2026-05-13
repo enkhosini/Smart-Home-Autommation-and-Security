@@ -1,13 +1,13 @@
-from flask import Flask, render_template, redirect, url_for, request, send_file
+from flask import Flask, render_template, redirect, request, send_file, jsonify
 import mysql.connector as connector
-from datetime import datetime, timezone
+from datetime import datetime
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")  # Non-interactive backend — must be set BEFORE importing pyplot
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import os
 import io
+import threading
 
 app = Flask(__name__)
 
@@ -17,6 +17,48 @@ app = Flask(__name__)
 STREAM_DIR = "stream"
 os.makedirs(STREAM_DIR, exist_ok=True)
 os.makedirs("static", exist_ok=True)
+
+# ======================================================
+# CAPTURE QUEUE — integer counter, thread-safe lock
+# ======================================================
+# FIX: was a simple boolean (pir_triggered = True/False).
+# Problem: if camera ESP missed the poll window (busy with stream timeout),
+# the flag was already reset to False and the capture was lost forever.
+#
+# Now we use a COUNTER:
+#   - PIR fires → counter += 1
+#   - Camera polls → counter > 0 → return capture:true, counter -= 1
+#   - Each PIR HIGH event is guaranteed exactly one photo, even if polled late.
+#
+# Thread lock prevents race condition between Flask request threads.
+# ======================================================
+capture_lock  = threading.Lock()
+capture_queue = 0          # counts pending PIR-triggered captures
+
+# ======================================================
+# LATEST SENSOR VALUES
+# ======================================================
+latest_pir = {
+    "device_id": "maambele_esp",
+    "value": 0,
+    "event": "No Motion",
+    "armed": False,
+    "time": "--"
+}
+
+latest_ldr = {
+    "device_id": "fanelo_esp",
+    "value": 0,
+    "event": "dark",
+    "time": "--"
+}
+
+latest_ultrasonic = {
+    "device_id": "bridgette_esp",
+    "distance_cm": 0,
+    "event": "",
+    "time": "--"
+}
 
 # ======================================================
 # DATABASE CONNECTION
@@ -32,96 +74,35 @@ def get_connection():
 
 
 # ======================================================
-# HOME
+# HELPER — fetch last N readings for a named device
 # ======================================================
+def get_readings(device_name, limit=20):
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT s.record_id, s.timestamp, s.reading_value
+                FROM sensor_readings_log s
+                JOIN device_info d ON s.device_id = d.device_id
+                WHERE d.device_name = %s
+                ORDER BY s.record_id DESC
+                LIMIT %s
+            """, (device_name, limit))
+            rows = cursor.fetchall()
+        return list(reversed(rows))
+    except Exception as e:
+        print(f"DB read error [{device_name}]: {e}")
+        return []
+
+
+# ══════════════════════════════════════════════════════
+# HOME / AUTH
+# ══════════════════════════════════════════════════════
+
 @app.route("/", methods=["GET", "POST"])
 def home():
     return render_template("index.html")
 
-
-# ======================================================
-# SIGNUP
-# ======================================================
-@app.route("/signup", methods=["GET", "POST"])
-def signup():
-    if request.method == "POST":
-        data = request.form
-        acc_email = data.get("email")
-        acc_password = data.get("password")
-
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT * FROM users WHERE email = %s", (acc_email,))
-            result = cursor.fetchone()
-
-            if result:
-                return render_template("signup.html", msg="User already exists")
-
-            cursor.execute(
-                "INSERT INTO users (email, passwrd) VALUES (%s, %s)",
-                (acc_email, acc_password)
-            )
-            conn.commit()
-
-        return redirect("/login")
-
-    return render_template("signup.html")
-
-
-# ======================================================
-# LOGIN
-# ======================================================
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        data = request.form
-        acc_email = data.get("email")
-        acc_password = data.get("password")
-
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT passwrd FROM users WHERE email = %s", (acc_email,))
-            result = cursor.fetchone()
-
-            if not result:
-                return render_template("login.html", msg="User not found")
-
-            stored_password = result[0]
-
-            if acc_password == stored_password:
-                routes = {
-                    "240254260@edu.vut.ac.za": "/pir_sensor",
-                    "218541309@edu.vut.ac.za":  "/ldr_sensor",
-                    "224303635@edu.vut.ac.za":  "/ultson_sensor",
-                    "240716574@edu.vut.ac.za":  "/camera",
-                    "221569766@edu.vut.ac.za":  "/dht22_sensor",
-                    "admin@edu.vut.ac.za":       "/admin",
-                }
-                destination = routes.get(acc_email, "/")
-                return redirect(destination)
-            else:
-                return render_template("login.html", msg="Invalid password")
-
-    return render_template("login.html")
-
-
-# ======================================================
-# ADMIN
-# ======================================================
-@app.route("/admin", methods=["GET", "POST"])
-def admin():
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM camera_events")
-        photo_count = cursor.fetchone()[0]
-
-    return render_template("dashboard.html", photo_count=photo_count)
-
-
-# ======================================================
-# ABOUT / TEAM / DHT
-# ======================================================
 @app.route("/about")
 def about():
     return render_template("about.html")
@@ -130,43 +111,203 @@ def about():
 def team():
     return render_template("team.html")
 
-@app.route("/dht")
-def dht():
-    return render_template("dht.html")
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        acc_email    = request.form.get("email")
+        acc_password = request.form.get("password")
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE email = %s", (acc_email,))
+            if cursor.fetchone():
+                return render_template("signup.html", msg="User already exists")
+            cursor.execute("INSERT INTO users (email, passwrd) VALUES (%s, %s)",
+                           (acc_email, acc_password))
+            conn.commit()
+        return redirect("/login")
+    return render_template("signup.html")
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        acc_email    = request.form.get("email")
+        acc_password = request.form.get("password")
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT passwrd FROM users WHERE email = %s", (acc_email,))
+            result = cursor.fetchone()
+        if not result:
+            return render_template("login.html", msg="User not found")
+        if acc_password != result[0]:
+            return render_template("login.html", msg="Invalid password")
+        routes = {
+            "240254260@edu.vut.ac.za": "/pir_sensor",
+            "218541309@edu.vut.ac.za": "/ldr_sensor",
+            "224303635@edu.vut.ac.za": "/ultson_sensor",
+            "240716574@edu.vut.ac.za": "/camera",
+            "221569766@edu.vut.ac.za": "/dht22_sensor",
+            "admin@edu.vut.ac.za":     "/admin",
+        }
+        return redirect(routes.get(acc_email, "/"))
+    return render_template("login.html")
 
 
-# ======================================================
-# CAMERA — MAIN PAGE (live stream + gallery + graph)
-# ======================================================
+# ══════════════════════════════════════════════════════
+# ADMIN
+# ══════════════════════════════════════════════════════
+
+@app.route("/admin")
+def admin():
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM camera_events")
+            photo_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM sensor_readings_log")
+            reading_count = cursor.fetchone()[0]
+    except Exception as e:
+        print(f"Admin DB error: {e}")
+        photo_count = reading_count = 0
+    return render_template("dashboard.html",
+                           photo_count=photo_count,
+                           reading_count=reading_count)
+
+
+# ══════════════════════════════════════════════════════
+# PIR SENSOR
+# ══════════════════════════════════════════════════════
+
+@app.route("/pir_sensor", methods=["GET", "POST"])
+def pir_sensor():
+    global latest_pir, capture_queue
+
+    if request.method == "POST":
+        data = request.json
+        if not data:
+            return {"status": "error", "message": "No JSON received"}, 400
+
+        device_id = data.get("device_id", "maambele_esp")
+        readings  = data.get("readings", {})
+        raw_value = readings.get("value", 0)
+        is_armed  = readings.get("isArmed", False)
+
+        value = 1 if str(raw_value).lower() in ("true", "1") else 0
+        event = "Motion Detected" if value == 1 else "No Motion"
+
+        latest_pir.update({
+            "device_id": device_id,
+            "value":     value,
+            "event":     event,
+            "armed":     is_armed,
+            "time":      datetime.now().strftime("%H:%M:%S")
+        })
+
+        print(f"PIR | {device_id} | value:{value} | armed:{is_armed}")
+
+        # Log to DB
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO sensor_readings_log
+                        (timestamp, reading_value, device_id)
+                    VALUES (%s, %s,
+                        (SELECT device_id FROM device_info
+                         WHERE device_name = %s LIMIT 1))
+                """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                      str(value), device_id))
+                conn.commit()
+        except Exception as e:
+            print(f"PIR DB error: {e}")
+
+        # FIX: increment counter (not set boolean)
+        # Each PIR HIGH increments by 1 — camera must poll once per increment
+        if value == 1:
+            with capture_lock:
+                capture_queue += 1
+            print(f"PIR HIGH — capture_queue is now {capture_queue}")
+
+        return {"status": "ok"}, 200
+
+    # GET — render dashboard
+    rows = get_readings("maambele_esp", 20)
+    chart_labels = [str(r["timestamp"])[-8:] for r in rows]
+    chart_values = [1 if str(r["reading_value"]).lower() in ("1","true") else 0
+                    for r in rows]
+
+    return render_template("pir.html",
+                           pir=latest_pir,
+                           history=rows,
+                           chart_labels=chart_labels,
+                           chart_values=chart_values)
+
+
+# ══════════════════════════════════════════════════════
+# SHOULD_CAPTURE — camera ESP polls this
+# ══════════════════════════════════════════════════════
+
+@app.route("/should_capture", methods=["GET"])
+def should_capture():
+    global capture_queue
+
+    with capture_lock:
+        if capture_queue > 0:
+            capture_queue -= 1          # consume ONE pending capture
+            remaining = capture_queue
+            print(f"Camera poll — capture:true  (queue remaining: {remaining})")
+            return jsonify({"capture": True,  "queue": remaining}), 200
+
+    return jsonify({"capture": False, "queue": 0}), 200
+
+
+# ══════════════════════════════════════════════════════
+# CAMERA PAGE
+# ══════════════════════════════════════════════════════
+
 @app.route("/camera")
 def camera():
-    """Landing page for the camera operator — shows live feed,
-    gallery thumbnails and the motion-frequency graph."""
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, event_time FROM camera_events ORDER BY id DESC LIMIT 10"
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, event_time
+                FROM camera_events
+                ORDER BY id DESC
+                LIMIT 10
+            """)
+            rows = cursor.fetchall()
+    except Exception as e:
+        print(f"Camera page DB error: {e}")
+        rows = []
+
+    graph_rows   = list(reversed(rows))
+    graph_labels = []
+    graph_values = []
+    for i, row in enumerate(graph_rows, start=1):
+        event_time = row[1]
+        graph_labels.append(
+            event_time.strftime("%H:%M:%S") if event_time else "Unknown"
         )
-        rows = cursor.fetchall()
+        graph_values.append(i)
 
-    return render_template("camera.html", photos=rows)
+    return render_template("camera.html",
+                           photos=rows,
+                           graph_labels=graph_labels,
+                           graph_values=graph_values)
 
 
-# ======================================================
-# LIVE STREAM — receive frame from ESP32
-# ======================================================
+# ══════════════════════════════════════════════════════
+# LIVE STREAM
+# ══════════════════════════════════════════════════════
+
 @app.route("/cam_stream", methods=["POST"])
 def cam_stream():
-    """ESP32 posts raw JPEG bytes here every ~1 s for the live view."""
     img = request.data
-    with open(os.path.join(STREAM_DIR, "latest.jpg"), "wb") as f:
-        f.write(img)
+    if img:
+        with open(os.path.join(STREAM_DIR, "latest.jpg"), "wb") as f:
+            f.write(img)
     return "ok", 200
 
-
-# ======================================================
-# SERVE LATEST FRAME (polled by the live-view page)
-# ======================================================
 @app.route("/latest.jpg")
 def latest():
     path = os.path.join(STREAM_DIR, "latest.jpg")
@@ -175,381 +316,309 @@ def latest():
     with open(path, "rb") as f:
         data = f.read()
     return data, 200, {
-        "Content-Type": "image/jpeg",
+        "Content-Type":  "image/jpeg",
         "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0"
+        "Pragma":        "no-cache",
+        "Expires":       "0"
     }
 
 
-# ======================================================
-# LIVE VIEW PAGE (standalone)
-# ======================================================
-@app.route("/view")
-def view():
-    return render_template("cam_livestream.html")
+# ══════════════════════════════════════════════════════
+# MOTION CAPTURE — save PIR-triggered photo
+# ══════════════════════════════════════════════════════
 
-
-# ======================================================
-# MOTION CAPTURE — receive motion photo from ESP32
-# NOTE: ESP32 posts to /motion_capture (fixed from /upload_photo)
-# ======================================================
 @app.route("/motion_capture", methods=["POST"])
 def motion_capture():
-    """
-    Receives a JPEG from the ESP32 when motion is detected.
-    Saves the image as a BLOB in camera_events.
-    Enforces a rolling window of 10 photos — oldest is deleted when
-    the 11th arrives.
-    """
     img = request.data
-
     if not img:
-        return {"status": "error", "message": "No image data received"}, 400
+        return {"status": "error", "message": "No image data"}, 400
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO camera_events (image) VALUES (%s)", (img,)
+            )
+            conn.commit()
 
-        # ── Insert the new photo ──────────────────────────────────────────
-        cursor.execute(
-            "INSERT INTO camera_events (image) VALUES (%s)",
-            (img,)
-        )
-        conn.commit()
+            # Keep only last 10
+            cursor.execute("SELECT COUNT(*) FROM camera_events")
+            total = cursor.fetchone()[0]
+            if total > 10:
+                cursor.execute("""
+                    SELECT id FROM camera_events
+                    ORDER BY id ASC LIMIT %s
+                """, (total - 10,))
+                old_ids = [r[0] for r in cursor.fetchall()]
+                if old_ids:
+                    placeholders = ",".join(["%s"] * len(old_ids))
+                    cursor.execute(
+                        f"DELETE FROM camera_events WHERE id IN ({placeholders})",
+                        old_ids
+                    )
+                    conn.commit()
 
-        # ── Enforce 10-photo cap ──────────────────────────────────────────
-        # Count total rows
-        cursor.execute("SELECT COUNT(*) FROM camera_events")
-        total = cursor.fetchone()[0]
+    except Exception as e:
+        print(f"motion_capture DB error: {e}")
+        return {"status": "error"}, 500
 
-        if total > 10:
-            # Find IDs of all rows beyond the newest 10 (i.e., the oldest ones)
-            cursor.execute("""
-                SELECT id FROM camera_events
-                ORDER BY id ASC
-                LIMIT %s
-            """, (total - 10,))
-            old_ids = [row[0] for row in cursor.fetchall()]
-
-            if old_ids:
-                format_strings = ",".join(["%s"] * len(old_ids))
-                cursor.execute(
-                    f"DELETE FROM camera_events WHERE id IN ({format_strings})",
-                    old_ids
-                )
-                conn.commit()
-                print(f"Auto-deleted {len(old_ids)} old photo(s). Keeping newest 10.")
-
-    print("Motion photo saved to database.")
+    print("PIR-triggered photo saved to DB")
     return {"status": "saved"}, 200
 
 
-# ======================================================
-# GALLERY — show all stored photos (newest first)
-# ======================================================
+# ══════════════════════════════════════════════════════
+# GALLERY
+# ══════════════════════════════════════════════════════
+
 @app.route("/gallery")
 def gallery():
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, event_time FROM camera_events ORDER BY id DESC"
-        )
-        rows = cursor.fetchall()
-
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, event_time FROM camera_events ORDER BY id DESC")
+            rows = cursor.fetchall()
+    except Exception as e:
+        print(f"Gallery error: {e}")
+        rows = []
     return render_template("gallery.html", photos=rows)
 
-
-# ======================================================
-# SERVE A SINGLE PHOTO BY ID
-# ======================================================
 @app.route("/photo/<int:photo_id>")
 def photo(photo_id):
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT image FROM camera_events WHERE id = %s",
-            (photo_id,)
-        )
-        row = cursor.fetchone()
-
-    if row:
-        return row[0], 200, {"Content-Type": "image/jpeg"}
-
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT image FROM camera_events WHERE id = %s", (photo_id,))
+            row = cursor.fetchone()
+        if row:
+            return row[0], 200, {"Content-Type": "image/jpeg"}
+    except Exception as e:
+        print(f"Photo fetch error: {e}")
     return "Not Found", 404
 
 
-# ======================================================
-# CAMERA GRAPH — motion detections over time (last 10)
-# ======================================================
-@app.route("/camera_graph")
-def camera_graph():
-    """
-    Generates a bar chart of motion-detection events using the
-    timestamps of the (up to) 10 most recent captures.
-    Returns the chart as a PNG image.
-    """
-    with get_connection() as conn:
-        df = pd.read_sql(
-            "SELECT event_time FROM camera_events ORDER BY id DESC LIMIT 10",
-            conn
-        )
-
-    if df.empty:
-        # Return a simple placeholder image rather than plain text so the
-        # <img> tag in the template doesn't break.
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.text(0.5, 0.5, "No camera data yet", ha="center", va="center",
-                fontsize=14, color="grey")
-        ax.axis("off")
-    else:
-        df["event_time"] = pd.to_datetime(df["event_time"])
-        # Sort chronologically for the chart
-        df = df.sort_values("event_time")
-
-        # Label each capture with its local time string
-        labels = df["event_time"].dt.strftime("%H:%M:%S")
-        x = range(len(labels))
-
-        fig, ax = plt.subplots(figsize=(10, 5))
-        bars = ax.bar(x, [1] * len(labels), color="#e74c3c", edgecolor="black", width=0.6)
-
-        ax.set_xticks(list(x))
-        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
-        ax.set_yticks([])  # Height is always 1 — y-axis conveys no extra info
-        ax.set_xlabel("Capture Time", fontsize=11)
-        ax.set_title("Last 10 Motion Captures — Timeline", fontsize=13, fontweight="bold")
-
-        # Annotate each bar with its sequence number
-        for i, bar in enumerate(bars):
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + 0.01,
-                f"#{i+1}",
-                ha="center", va="bottom", fontsize=8
-            )
-
-        plt.tight_layout()
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=100)
-    plt.close(fig)
-    buf.seek(0)
-
-    return send_file(buf, mimetype="image/png")
-
-
-# ======================================================
-# PIR SENSOR
-# ======================================================
-@app.route("/pir_sensor", methods=["POST", "GET"])
-def pir_sensor():
-    if request.method == "POST":
-        data = request.json
-        if not data:
-            return {"status": "error", "message": "No JSON received"}, 400
-
-        device_id = data.get("device_id")
-        readings  = data.get("readings", {})
-        event_type = readings.get("type")
-        value      = readings.get("value")
-        is_armed   = readings.get("isArmed")
-
-        print(f"PIR | {device_id} | {event_type}: {value} | armed: {is_armed}")
-
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO sensor_readings_log (timestamp, reading_value, device_id)
-                VALUES (%s, %s, (SELECT device_id FROM device_info WHERE device_name = %s LIMIT 1))
-            """, (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                str(value),
-                device_id
-            ))
-            conn.commit()
-
-        return {"status": "ok"}, 200
-
-    return render_template("pir.html")
-
-
-# ======================================================
+# ══════════════════════════════════════════════════════
 # LDR SENSOR
-# ======================================================
-latest_ldr = {
-    "device_id": "",
-    "value": 0,
-    "event": "dark",
-    "time": ""
-}
+# ══════════════════════════════════════════════════════
 
 @app.route("/ldr_sensor", methods=["GET", "POST"])
 def ldr_sensor():
     global latest_ldr
 
-    # ==================================================
-    # POST REQUEST FROM ESP32
-    # ==================================================
     if request.method == "POST":
         data = request.json
-
         if not data:
             return {"status": "error", "message": "No JSON received"}, 400
 
-        device_id = data.get("device_id", "ESP32_LDR")
-        readings = data.get("readings", {})
+        device_id = data.get("device_id", "fanelo_esp")
+        readings  = data.get("readings", {})
+        value     = readings.get("value", 0)
+        event     = readings.get("event", "dark")
 
-        event_type = readings.get("type", "ldr")
-        value = readings.get("value", 0)
-        event = readings.get("event", "dark")
-
-        current_time = datetime.now().strftime("%H:%M:%S")
-
-        # Save latest live values
         latest_ldr.update({
             "device_id": device_id,
-            "value": value,
-            "event": event,
-            "time": current_time
+            "value":     value,
+            "event":     event,
+            "time":      datetime.now().strftime("%H:%M:%S")
         })
 
-        print(f"LDR | {device_id} | {event_type}: {value} | event: {event}")
-
-        # Save into database
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO sensor_readings_log
-                (timestamp, reading_value, device_id)
-                VALUES (%s, %s,
-                    (SELECT device_id
-                     FROM device_info
-                     WHERE device_name = %s
-                     LIMIT 1)
-                )
-            """, (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                str(value),
-                device_id
-            ))
-            conn.commit()
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO sensor_readings_log
+                        (timestamp, reading_value, device_id)
+                    VALUES (%s, %s,
+                        (SELECT device_id FROM device_info
+                         WHERE device_name = %s LIMIT 1))
+                """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                      str(value), device_id))
+                conn.commit()
+        except Exception as e:
+            print(f"LDR DB error: {e}")
 
         return {"status": "ok"}, 200
 
-    # ==================================================
-    # GET REQUEST FOR WEBSITE
-    # ==================================================
-    with get_connection() as conn:
-        cursor = conn.cursor(dictionary=True)
+    rows         = get_readings("fanelo_esp", 20)
+    chart_labels = [str(r["timestamp"])[-8:] for r in rows]
+    chart_values = [int(r["reading_value"]) for r in rows]
 
-        cursor.execute("""
-            SELECT timestamp, reading_value
-            FROM sensor_readings_log
-            ORDER BY timestamp DESC
-            LIMIT 20
-        """)
-        rows = cursor.fetchall()
-
-    rows.reverse()
-
-    chart_labels = []
-    chart_values = []
-
-    for row in rows:
-        chart_labels.append(row["timestamp"].strftime("%H:%M:%S"))
-        chart_values.append(float(row["reading_value"]))
-
-    return render_template(
-        "ldr.html",
-        ldr=latest_ldr,
-        history=rows,
-        chart_labels=chart_labels,
-        chart_values=chart_values
-    )
+    return render_template("ldr.html",
+                           ldr=latest_ldr,
+                           history=rows,
+                           chart_labels=chart_labels,
+                           chart_values=chart_values)
 
 
-# ======================================================
+# ══════════════════════════════════════════════════════
 # ULTRASONIC SENSOR
-# ======================================================
+# ══════════════════════════════════════════════════════
+
 @app.route("/ultson_sensor", methods=["GET", "POST"])
 def ultson_sensor():
+    global latest_ultrasonic
+    device_name = "bridgette_esp"
+
     if request.method == "POST":
         data = request.json
         if not data:
             return {"status": "error", "message": "No JSON received"}, 400
 
-        device_id  = data.get("device_id")
-        readings   = data.get("readings", {})
-        event_type = readings.get("type")
-        value      = readings.get("value")
-        event      = readings.get("event", "")
+        device_name = data.get("device_id", "bridgette_esp")
+        readings    = data.get("readings", {})
+        value       = readings.get("value", 0)
+        event       = readings.get("event", "")
 
-        print(f"ULTRASONIC | {device_id} | {event_type}: {value} | event: {event}")
+        latest_ultrasonic.update({
+            "device_id":   device_name,
+            "distance_cm": value,
+            "event":       event,
+            "time":        datetime.now().strftime("%H:%M:%S")
+        })
 
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO sensor_readings_log (timestamp, reading_value, device_id)
-                VALUES (%s, %s, (SELECT device_id FROM device_info WHERE device_name = %s LIMIT 1))
-            """, (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                str(value),
-                device_id
-            ))
-            conn.commit()
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute("""
+                    SELECT device_id FROM device_info
+                    WHERE device_name = %s LIMIT 1
+                """, (device_name,))
+                result = cursor.fetchone()
+                if not result:
+                    return {"status": "error", "message": "Device not found"}, 404
+                cursor.execute("""
+                    INSERT INTO sensor_readings_log
+                        (timestamp, reading_value, device_id)
+                    VALUES (%s, %s, %s)
+                """, (datetime.now(), str(value), result["device_id"]))
+                conn.commit()
+        except Exception as e:
+            print(f"Ultrasonic DB error: {e}")
 
         return {"status": "ok"}, 200
 
-    return render_template("ultson.html")
+    rows   = get_readings(device_name, 20)
+    latest = rows[-1] if rows else None
+    chart_labels = [str(r["timestamp"])[-8:] for r in rows]
+    chart_values = [float(r["reading_value"]) for r in rows]
+
+    return render_template("ultson.html",
+                           ultrasonic=latest_ultrasonic,
+                           latest=latest,
+                           history=list(reversed(rows)),
+                           chart_labels=chart_labels,
+                           chart_values=chart_values)
 
 
-# ======================================================
-# DHT22 SENSOR
-# ======================================================
+# ══════════════════════════════════════════════════════
+# DHT22 SENSOR (FIXED VERSION)
+# ══════════════════════════════════════════════════════
+
+latest_dht22 = {
+    "device_id": "",
+    "temperature": 0,
+    "humidity": 0,
+    "fan_status": "",
+    "time": ""
+}
+
 @app.route("/dht22_sensor", methods=["GET", "POST"])
 def dht22_sensor():
+
+    global latest_dht22
+    device_name = "muzi_esp"
+
+    # ==================================================
+    # POST (ESP32 sends data)
+    # ==================================================
     if request.method == "POST":
+
         data = request.json
         if not data:
             return {"status": "error", "message": "No JSON received"}, 400
 
-        device_id = data.get("device_id")
-        readings  = data.get("readings", [])
+        device_name = data.get("device_id", "muzi_esp")
+        readings = data.get("readings", [])
 
         if len(readings) < 2:
             return {"status": "error", "message": "Expected 2 readings"}, 400
 
-        temp_reading     = readings[0]
-        humidity_reading = readings[1]
+        temp_value = readings[0].get("value", 0)
+        hum_value  = readings[1].get("value", 0)
+        fan_status = readings[0].get("event", "fan_off")
 
-        temp_value     = temp_reading.get("value")
-        humidity_value = humidity_reading.get("value")
+        latest_dht22.update({
+            "device_id": device_name,
+            "temperature": temp_value,
+            "humidity": hum_value,
+            "fan_status": fan_status,
+            "time": datetime.now().strftime("%H:%M:%S")
+        })
 
-        print(f"DHT22 | {device_id} | Temp: {temp_value}°C | Humidity: {humidity_value}%")
+        # SAVE TO DB
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor(dictionary=True)
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("""
+                    SELECT device_id FROM device_info
+                    WHERE device_name = %s LIMIT 1
+                """, (f"{device_name}_temp",))
+                temp_dev = cursor.fetchone()
 
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            # Log temperature
-            cursor.execute("""
-                INSERT INTO sensor_readings_log (timestamp, reading_value, device_id)
-                VALUES (%s, %s, (SELECT device_id FROM device_info WHERE device_name = %s LIMIT 1))
-            """, (timestamp, str(temp_value), f"{device_id}_temp"))
-            # Log humidity
-            cursor.execute("""
-                INSERT INTO sensor_readings_log (timestamp, reading_value, device_id)
-                VALUES (%s, %s, (SELECT device_id FROM device_info WHERE device_name = %s LIMIT 1))
-            """, (timestamp, str(humidity_value), f"{device_id}_humidity"))
-            conn.commit()
+                cursor.execute("""
+                    SELECT device_id FROM device_info
+                    WHERE device_name = %s LIMIT 1
+                """, (f"{device_name}_humidity",))
+                hum_dev = cursor.fetchone()
+
+                if temp_dev:
+                    cursor.execute("""
+                        INSERT INTO sensor_readings_log
+                        (timestamp, reading_value, device_id)
+                        VALUES (%s, %s, %s)
+                    """, (datetime.now(), str(temp_value), temp_dev["device_id"]))
+
+                if hum_dev:
+                    cursor.execute("""
+                        INSERT INTO sensor_readings_log
+                        (timestamp, reading_value, device_id)
+                        VALUES (%s, %s, %s)
+                    """, (datetime.now(), str(hum_value), hum_dev["device_id"]))
+
+                conn.commit()
+
+        except Exception as e:
+            print("DHT22 DB error:", e)
 
         return {"status": "ok"}, 200
 
-    return render_template("dht22.html")
+    # ==================================================
+    # GET (Dashboard)
+    # ==================================================
+    temp_rows = get_readings("muzi_esp_temp", 20)
+    hum_rows  = get_readings("muzi_esp_humidity", 20)
 
+    chart_labels = [str(r["timestamp"])[-8:] for r in temp_rows]
+    chart_temp = [float(r["reading_value"]) for r in temp_rows]
+    chart_humidity = [float(r["reading_value"]) for r in hum_rows]
 
-# ======================================================
+    # IMPORTANT FIX: zip done in Python
+    history = list(zip(temp_rows, hum_rows))
+    history = list(reversed(history))
+
+    return render_template(
+        "dht.html",
+        dht22=latest_dht22,
+        latest_temp=temp_rows[-1] if temp_rows else None,
+        latest_hum=hum_rows[-1] if hum_rows else None,
+        history=history,
+        chart_labels=chart_labels,
+        chart_temp=chart_temp,
+        chart_humidity=chart_humidity
+    )
+
+# ══════════════════════════════════════════════════════
 # RUN
-# ======================================================
+# ══════════════════════════════════════════════════════
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
