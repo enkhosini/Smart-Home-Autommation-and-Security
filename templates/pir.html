@@ -1,14 +1,324 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>PIR</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>PIR Sensor Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:#0d0d0d;
+    color:white;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+header{
+    background:#111;
+    padding:20px;
+    text-align:center;
+    border-bottom:2px solid #e74c3c;
+}
+
+header h1{
+    color:#e74c3c;
+}
+
+.container{
+    width:90%;
+    max-width:1200px;
+    margin:auto;
+    margin-top:30px;
+}
+
+.card{
+    background:#1a1a1a;
+    padding:25px;
+    border-radius:10px;
+    margin-bottom:25px;
+}
+
+.live-value{
+    font-size:60px;
+    font-weight:bold;
+}
+
+.motion{
+    color:#e74c3c;
+}
+
+.clear{
+    color:#27ae60;
+}
+
+.state{
+    padding:8px 20px;
+    border-radius:20px;
+    display:inline-block;
+    margin-top:10px;
+    font-weight:bold;
+}
+
+.detected{
+    background:#e74c3c;
+}
+
+.no-motion{
+    background:#27ae60;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th, td{
+    padding:12px;
+    border-bottom:1px solid #333;
+    text-align:left;
+}
+
+th{
+    color:#e74c3c;
+}
+
+tr:hover{
+    background:#222;
+}
+
+.status-motion{
+    color:#e74c3c;
+    font-weight:bold;
+}
+
+.status-clear{
+    color:#27ae60;
+    font-weight:bold;
+}
+
+.chart-container{
+    position:relative;
+    height:500px;
+    width:100%;
+}
+
+</style>
 </head>
 
 <body>
 
-<h1>PIR Sensor</h1>
+<header>
+    <h1>PIR Motion Sensor Dashboard</h1>
+</header>
 
-<p>Status: Motion detected or not</p>
+<div class="container">
+
+    <!-- LIVE DATA -->
+
+    <div class="card">
+
+        <h2>Live Status</h2>
+
+        <br>
+
+        <div class="live-value {% if pir.value|int == 1 %}motion{% else %}clear{% endif %}">
+
+            {% if pir.value|int == 1 %}
+                MOTION
+            {% else %}
+                CLEAR
+            {% endif %}
+
+        </div>
+
+        <p>PIR Motion Detection</p>
+
+        <span class="state {% if pir.value|int == 1 %}detected{% else %}no-motion{% endif %}">
+
+            {{ pir.event if pir else "NO DATA" }}
+
+        </span>
+
+        <br><br>
+
+        <p><strong>Device:</strong> {{ pir.device_id if pir else "ESP32_PIR" }}</p>
+
+        <p><strong>Updated:</strong> {{ pir.time if pir else "--:--:--" }}</p>
+
+    </div>
+
+    <!-- GRAPH -->
+
+    <div class="card">
+
+        <h2>Motion Detection Graph</h2>
+
+        <br>
+
+        <div class="chart-container">
+            <canvas id="pirChart"></canvas>
+        </div>
+
+    </div>
+
+    <!-- HISTORY -->
+
+    <div class="card">
+
+        <h2>Motion History</h2>
+
+        <br>
+
+        <table>
+
+            <tr>
+                <th>#</th>
+                <th>Time</th>
+                <th>Value</th>
+                <th>Status</th>
+            </tr>
+
+            {% for row in history %}
+
+            <tr>
+
+                <td>{{ loop.index }}</td>
+
+                <td>{{ row.timestamp }}</td>
+
+                <td>{{ row.reading_value }}</td>
+
+                <td class="{% if row.reading_value|string|lower in ['1','true'] %}status-motion{% else %}status-clear{% endif %}">
+
+                    {% if row.reading_value|string|lower in ['1','true'] %}
+                        MOTION
+                    {% else %}
+                        CLEAR
+                    {% endif %}
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+const labels = {{ chart_labels | tojson }};
+const values = {{ chart_values | tojson }};
+
+const ctx = document.getElementById('pirChart').getContext('2d');
+
+new Chart(ctx,{
+
+    type:'line',
+
+    data:{
+
+        labels:labels,
+
+        datasets:[{
+
+            label:'PIR Motion Detection',
+
+            data:values,
+
+            borderColor:'#e74c3c',
+
+            backgroundColor:'rgba(231,76,60,0.2)',
+
+            fill:true,
+
+            tension:0.4,
+
+            borderWidth:3,
+
+            pointBackgroundColor: values.map(v =>
+                v === 1 ? "#e74c3c" : "#27ae60"
+            ),
+
+            pointBorderColor:'#fff',
+
+            pointRadius:6,
+
+            pointHoverRadius:8
+        }]
+    },
+
+    options:{
+
+        responsive:true,
+
+        maintainAspectRatio:false,
+
+        scales:{
+
+            x:{
+
+                ticks:{
+                    color:'white',
+                    maxRotation:45
+                },
+
+                grid:{
+                    color:'#333'
+                }
+            },
+
+            y:{
+
+                min:0,
+
+                max:5,
+
+                ticks:{
+
+                    color:'white',
+
+                    stepSize:1,
+
+                    callback:function(value){
+
+                        if(value === 1){
+                            return "MOTION";
+                        }
+
+                        if(value === 0){
+                            return "CLEAR";
+                        }
+
+                        return value;
+                    }
+                },
+
+                grid:{
+                    color:'#333'
+                }
+            }
+        }
+    }
+});
+
+setTimeout(() => {
+    location.reload();
+}, 5000);
+
+</script>
 
 </body>
 </html>
