@@ -1,44 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Home System</title>
-  <link rel="stylesheet" href="static/fanelo.css">
+  <title>Smart Home</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='fanelo.css') }}">
 </head>
 
 <body>
 
 <ul class="navbar">
-  <li><a href="#">Home</a></li>
+  <li><a href="{{ url_for('home') }}">Home</a></li>
 
   <li class="dropdown">
-    <a href="#">Sensor_unit</a>
+    <a href="#">Nodes</a>
     <ul class="features">
-      <li><a href={{ url_for('login') }}>Ultrasonic Sensor</a></li>
-      <li><a href={{ url_for('login') }}>ESP32 Camera module</a></li>
-      <li><a href={{ url_for('login') }}>LDR sensor</a></li>
-      <li><a href={{ url_for('login') }}>DHT22 sensor</a></li>
-      <li><a href={{ url_for('login') }}>PIR sensor</a></li>
+      <li><a href="{{ url_for('dht22_sensor') }}">NODE 1(DHT22)</a></li>
+      <li><a href="{{ url_for('ultson_sensor') }}">NODE 2(Ultrasonic)</a></li>
+      <li><a href="{{ url_for('pir_sensor') }}">NODE 3(PIR)</a></li>
+      <li><a href="{{ url_for('camera') }}">NODE 4(Camera)</a></li>
+      <li><a href="{{ url_for('ldr_sensor') }}">NODE 5(LDR)</a></li>
+
     </ul>
   </li>
 
-  <!-- <li><a href="{{ url_for("about") }}">About-us</a></li> -->
-  <li><a href="{{ url_for("team") }}">Team</a></li>
-  <li><a href="{{ url_for("login") }}">Admin</a></li>
+  <li><a href="{{ url_for('about') }}">About</a></li>
+  <li><a href="{{ url_for('admin') }}">Admin</a></li>
 </ul>
 
 <section class="home">
   <div class="home-container">
-    <h1>Smart Home Automation & Security</h1>
-    <p>
-      Welcome to your smart home system. Monitor, control, and secure your home 
-      efficiently using modern technology.
-    </p>
+    <h1>Smart Home System</h1>
+    <p>Monitor and control your home easily.</p>
   </div>
 </section>
 
 </body>
 </html>
-
-
