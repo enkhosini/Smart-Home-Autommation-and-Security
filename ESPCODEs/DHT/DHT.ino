@@ -1,36 +1,109 @@
+// ================= ESP32 DHT22 + PWM FAN CONTROL =================
+// Device: muzi_esp
+// Sends temperature + humidity to Flask server
+// Controls fan speed based on temperature
+
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "DHTesp.h"
 
-// ==================================================
-// WIFI SETTINGS
-// ==================================================
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
+// =====================================================
+// WIFI
+// =====================================================
+const char* ssid     = "Maambele";
+const char* password = "@Onepiece0907";
 
-// Flask server IP
-const char* serverURL = "http://10.10.10.1:5000/dht22_sensor";
+IPAddress local_IP(172, 20, 10, 6);
+IPAddress gateway(172, 20, 10, 2);
+IPAddress subnet(255, 255, 255, 0);
 
-// ==================================================
-// PIN DEFINITIONS
-// ==================================================
-const int DHT_PIN = 13;      // DHT22 Data pin
-const int FAN_PIN = 14;      // Fan relay / transistor
+// =====================================================
+// FLASK SERVER
+// =====================================================
+const char* serverURL = "http://172.20.10.2:5000/dht22_sensor";
 
+// =====================================================
+// PINS
+// =====================================================
+const int DHT_PIN = 23;
+const int FAN_PIN = 5;
+
+// =====================================================
+// CONFIG
+// =====================================================
+const String DEVICE_ID = "muzi_esp";
+const unsigned long INTERVAL = 3000;
+
+// =====================================================
+// DHT SENSOR
+// =====================================================
 DHTesp dhtSensor;
 
-// ==================================================
-// SETUP
-// ==================================================
+unsigned long lastSend = 0;
+
+// ─────────────────────────────────────────────────────
+void sendToFlask(float temp, float hum, const String& fanStatus) {
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi disconnected");
+    return;
+  }
+
+  HTTPClient http;
+
+  http.begin(serverURL);
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(3000);
+
+  // JSON
+  String json = "{";
+  json += "\"device_id\":\"" + DEVICE_ID + "\",";
+  json += "\"readings\":[";
+
+  // Temperature
+  json += "{";
+  json += "\"type\":\"temperature_reading\",";
+  json += "\"value\":" + String(temp, 2) + ",";
+  json += "\"event\":\"" + fanStatus + "\"";
+  json += "},";
+
+  // Humidity
+  json += "{";
+  json += "\"type\":\"humidity_reading\",";
+  json += "\"value\":" + String(hum, 1);
+  json += "}";
+
+  json += "]}";
+
+  int code = http.POST(json);
+
+  Serial.print("HTTP Response: ");
+  Serial.println(code);
+
+  if (code < 0) {
+    Serial.println(http.errorToString(code));
+  }
+
+  http.end();
+}
+
+// ─────────────────────────────────────────────────────
 void setup() {
+
   Serial.begin(115200);
 
+  // DHT22 setup
   dhtSensor.setup(DHT_PIN, DHTesp::DHT22);
 
-  pinMode(FAN_PIN, OUTPUT);
-  digitalWrite(FAN_PIN, LOW);   // Fan OFF initially
+  // PWM FAN setup
+  ledcAttach(FAN_PIN, 5000, 8);
 
-  // ---------------- WIFI ----------------
+  // Static IP
+  if (!WiFi.config(local_IP, gateway, subnet)) {
+    Serial.println("Static IP Failed");
+  }
+
+  // Connect WiFi
   WiFi.begin(ssid, password);
 
   Serial.print("Connecting to WiFi");
@@ -41,85 +114,78 @@ void setup() {
   }
 
   Serial.println("\nWiFi Connected!");
-  Serial.print("ESP IP Address: ");
+  Serial.print("ESP32 IP: ");
   Serial.println(WiFi.localIP());
 }
 
-// ==================================================
-// LOOP
-// ==================================================
+// ─────────────────────────────────────────────────────
 void loop() {
 
+  unsigned long now = millis();
+
+  if (now - lastSend < INTERVAL) return;
+
+  lastSend = now;
+
+  // Read sensor
   TempAndHumidity data = dhtSensor.getTempAndHumidity();
 
+  // Check sensor reading
   if (isnan(data.temperature) || isnan(data.humidity)) {
-    Serial.println("Failed to read from DHT22!");
-    delay(2000);
+    Serial.println("DHT22 read failed");
     return;
   }
 
   float temp = data.temperature;
-  float hum = data.humidity;
+  float hum  = data.humidity;
 
-  Serial.println("Temperature: " + String(temp, 2) + " C");
-  Serial.println("Humidity   : " + String(hum, 1) + " %");
+  Serial.println("--------------------------------");
 
+  Serial.print("Temperature: ");
+  Serial.print(temp);
+  Serial.println(" °C");
+
+  Serial.print("Humidity: ");
+  Serial.print(hum);
+  Serial.println(" %");
+
+  // =====================================================
+  // FAN SPEED CONTROL
+  // =====================================================
+
+  int fanSpeed = 0;
   String fanStatus = "";
 
-  // ==================================================
-  // FAN CONTROL
-  // ==================================================
-  if (temp > 35 && hum > 70) {
-    digitalWrite(FAN_PIN, HIGH);
-    fanStatus = "fan_on";
-    Serial.println("Fan ON");
+  // Temperature-based speed
+  if (temp <= 20) {
+
+    fanSpeed = 80;
+    fanStatus = "fan_slow";
+
+  }
+  else if (temp <= 30) {
+
+    fanSpeed = 150;
+    fanStatus = "fan_medium";
+
   }
   else {
-    digitalWrite(FAN_PIN, LOW);
-    fanStatus = "fan_off";
-    Serial.println("Fan OFF");
+
+    fanSpeed = 255;
+    fanStatus = "fan_fast";
   }
 
-  // ==================================================
-  // SEND TO FLASK SERVER
-  // ==================================================
-  if (WiFi.status() == WL_CONNECTED) {
+  // Apply PWM
+  ledcWrite(FAN_PIN, fanSpeed);
 
-    HTTPClient http;
+  Serial.print("Fan Speed: ");
+  Serial.println(fanSpeed);
 
-    http.begin(serverURL);
-    http.addHeader("Content-Type", "application/json");
+  Serial.print("Fan Status: ");
+  Serial.println(fanStatus);
 
-    // JSON format Flask already expects
-    String jsonData = "{";
-    jsonData += "\"device_id\":\"muzi_esp\",";
-    jsonData += "\"readings\":[";
-    
-    jsonData += "{";
-    jsonData += "\"type\":\"temperature_reading\",";
-    jsonData += "\"value\":" + String(temp,2) + ",";
-    jsonData += "\"event\":\"" + fanStatus + "\"";
-    jsonData += "},";
+  // Send to Flask
+  sendToFlask(temp, hum, fanStatus);
 
-    jsonData += "{";
-    jsonData += "\"type\":\"humidity_reading\",";
-    jsonData += "\"value\":" + String(hum,1);
-    jsonData += "}";
-
-    jsonData += "]}";
-
-    int responseCode = http.POST(jsonData);
-
-    Serial.print("HTTP Response Code: ");
-    Serial.println(responseCode);
-
-    http.end();
-  }
-  else {
-    Serial.println("WiFi Disconnected");
-  }
-
-  Serial.println("----------------------------");
-
-  delay(3000);
+  Serial.println("--------------------------------");
 }
