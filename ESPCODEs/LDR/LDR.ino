@@ -6,17 +6,17 @@
 #include <HTTPClient.h>
 
 // ---------------- WIFI ----------------
-const char* ssid     = "Maambele";
-const char* password = "@Onepiece0907";
+const char* ssid     = "A67C";
+const char* password = "ga_group7";
 
 // Static IP so the server always knows where to reach this ESP
-IPAddress local_IP(172, 20, 10, 5);
-IPAddress gateway(172, 20, 10, 2);
+IPAddress local_IP(10, 192, 156, 65);
+IPAddress gateway(10, 192, 156, 61);
 IPAddress subnet(255, 255, 255, 0);
 
 
 // ---------------- FLASK ----------------
-const char* serverURL = "http://172.20.10.2:5000/ldr_sensor";
+const char* serverURL = "http://10.192.156.61:5000/ldr_sensor";
 
 // ---------------- PINS ----------------
 const int ldrPin    = 34;
