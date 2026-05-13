@@ -233,13 +233,8 @@ canvas{
         <img
             id="liveImg"
             class="live-image"
-            src="/latest.jpg"
+            src=""
             alt="Live feed"
-
-            onerror="
-                this.style.display='none';
-                document.getElementById('noStream').style.display='block'
-            "
         >
 
         <div id="noStream" class="no-stream">
@@ -250,7 +245,7 @@ canvas{
 
             <div class="dot"></div>
 
-            LIVE — refreshes automatically
+            LIVE — refreshes automatically every second
 
         </div>
 
@@ -357,44 +352,56 @@ canvas{
 
 </div>
 
-
 <script>
 
 // ======================================================
-// LIVE STREAM
+// LIVE STREAM (FIXED)
 // ======================================================
 
 const liveImg = document.getElementById("liveImg");
 const noStream = document.getElementById("noStream");
 
-function fetchNextFrame(){
+let streamFailures = 0;
 
-    const next = new Image();
+function updateStream(){
 
-    next.onload = () => {
+    fetch("/latest.jpg?t=" + Date.now())
 
-        liveImg.src = next.src;
+    .then(response => {
+
+        if(!response.ok){
+            throw new Error("No stream");
+        }
+
+        streamFailures = 0;
+
+        liveImg.src = "/latest.jpg?t=" + Date.now();
 
         liveImg.style.display = "block";
 
         noStream.style.display = "none";
+    })
 
-        fetchNextFrame();
-    };
+    .catch(error => {
 
-    next.onerror = () => {
+        streamFailures++;
 
-        liveImg.style.display = "none";
+        console.log("Camera offline");
 
-        noStream.style.display = "block";
+        if(streamFailures >= 5){
 
-        setTimeout(fetchNextFrame, 1000);
-    };
+            liveImg.style.display = "none";
 
-    next.src = "/latest.jpg?t=" + Date.now();
+            noStream.style.display = "block";
+        }
+    });
 }
 
-fetchNextFrame();
+// refresh once every second
+setInterval(updateStream, 1000);
+
+// initial load
+updateStream();
 
 
 // ======================================================
@@ -529,7 +536,7 @@ const chart = new Chart(ctx, {
 
 
 // ======================================================
-// AUTO REFRESH
+// AUTO REFRESH GALLERY + GRAPH
 // ======================================================
 
 function refreshPage(){
@@ -595,6 +602,7 @@ function refreshPage(){
         );
 }
 
+// refresh every 10 seconds
 setInterval(refreshPage, 10000);
 
 </script>
