@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultrasonic Distance Sensor     <li><a href="{{ url_for('home') }}">Home</a></li></title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0d0d0d;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        header {
+            background: #111;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #25a7ff;
+        }
+
+        header h1 {
+            color: #25a7ff;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: auto;
+            margin-top: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: #1a1a1a;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            color: #25a7ff;
+            border-left: 4px solid #25a7ff;
+            padding-left: 10px;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+
+        .live-value {
+            font-size: 65px;
+            color: #25a7ff;
+            font-weight: bold;
+        }
+
+        .live-unit {
+            color: #999;
+            margin-top: 8px;
+            margin-bottom: 15px;
+        }
+
+        .state {
+            padding: 10px 24px;
+            border-radius: 30px;
+            display: inline-block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .open {
+            background: #00c853;
+        }
+
+        .closed {
+            background: #ff5252;
+        }
+
+        .details {
+            margin-top: 20px;
+            line-height: 2;
+            color: #ccc;
+        }
+
+        .chart-wrapper {
+            width: 100%;
+            height: 400px;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th {
+            background: #0c0c0c;
+            padding: 15px;
+            text-align: left;
+            color: #25a7ff;
+        }
+
+        table td {
+            padding: 15px;
+            border-top: 1px solid #2a2a2a;
+        }
+
+        .green {
+            color: #00e676;
+            font-weight: bold;
+        }
+
+        .red {
+            color: #ff5252;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .live-value {
+                font-size: 50px;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>📡 Ultrasonic Distance Sensor</h1>
+    </header>
+
+    <div class="container">
+
+        <!-- LIVE CARD -->
+        <div class="card">
+
+            <div class="section-title">Live Reading</div>
+
+            <div class="live-value">
+                {{ ultrasonic.distance_cm if ultrasonic else 0 }}
+            </div>
+
+            <div class="live-unit">centimetres</div>
+
+            <span class="state {% if ultrasonic.event == 'door_open' %}open{% else %}closed{% endif %}">
+                {% if ultrasonic.event == 'door_open' %}DOOR OPEN{% else %}DOOR CLOSED{% endif %}
+            </span>
+
+            <div class="details">
+                <p><strong>Device:</strong> {{ ultrasonic.device_id if ultrasonic else "ESP32" }}</p>
+                <p><strong>Threshold:</strong> 8 cm</p>
+                <p><strong>Updated:</strong> {{ ultrasonic.time if ultrasonic else "--:--:--" }}</p>
+                <p style="color: gray;">Auto refreshes every 5 seconds</p>
+            </div>
+
+        </div>
+
+        <!-- GRAPH -->
+        <div class="card">
+
+            <div class="section-title">Distance — Last 20 Readings</div>
+
+            <div class="chart-wrapper">
+                <canvas id="distanceChart"></canvas>
+            </div>
+
+        </div>
+
+        <!-- HISTORY -->
+        <div class="card">
+
+            <div class="section-title">Reading History</div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Timestamp</th>
+                        <th>Distance (cm)</th>
+                        <th>Door State</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in history %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ row.timestamp }}</td>
+                        <td>{{ row.reading_value }}</td>
+                        <td>
+                            {% if row.reading_value | float < 8 %}
+                                <span class="green">OPEN</span>
+                            {% else %}
+                                <span class="red">CLOSED</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        const labels = {{ chart_labels | tojson }};
+        const values = {{ chart_values | tojson }};
+
+        const ctx = document.getElementById('distanceChart').getContext('2d');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Distance (cm)',
+                    data: values,
+                    borderColor: '#25a7ff',
+                    backgroundColor: 'rgba(37,167,255,0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        min: 0,
+                        ticks: { color: 'white' },
+                        grid: { color: '#333' }
+                    },
+                    x: {
+                        ticks: { color: 'white' },
+                        grid: { color: '#333' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: 'white' }
+                    }
+                }
+            }
+        });
+
+        setTimeout(() => {
+            location.reload();
+        }, 5000);
+
+    </script>
+
+</body>
+</html>

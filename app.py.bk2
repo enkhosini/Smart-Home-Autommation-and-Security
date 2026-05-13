@@ -7,7 +7,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import os
 import io
-import threading
+import time
 
 app = Flask(__name__)
 
@@ -29,11 +29,7 @@ os.makedirs("static", exist_ok=True)
 #   - PIR fires → counter += 1
 #   - Camera polls → counter > 0 → return capture:true, counter -= 1
 #   - Each PIR HIGH event is guaranteed exactly one photo, even if polled late.
-#
-# Thread lock prevents race condition between Flask request threads.
-# ======================================================
-capture_lock  = threading.Lock()
-capture_queue = 0          # counts pending PIR-triggered captures
+
 
 # ======================================================
 # LATEST SENSOR VALUES
@@ -68,7 +64,7 @@ def get_connection():
         host="localhost",
         port=3306,
         user="root",
-        password="@Onepiece0907",
+        password="labadmin",
         database="ga_db"
     )
 
@@ -240,24 +236,6 @@ def pir_sensor():
                            history=rows,
                            chart_labels=chart_labels,
                            chart_values=chart_values)
-
-
-# ══════════════════════════════════════════════════════
-# SHOULD_CAPTURE — camera ESP polls this
-# ══════════════════════════════════════════════════════
-
-@app.route("/should_capture", methods=["GET"])
-def should_capture():
-    global capture_queue
-
-    with capture_lock:
-        if capture_queue > 0:
-            capture_queue -= 1          # consume ONE pending capture
-            remaining = capture_queue
-            print(f"Camera poll — capture:true  (queue remaining: {remaining})")
-            return jsonify({"capture": True,  "queue": remaining}), 200
-
-    return jsonify({"capture": False, "queue": 0}), 200
 
 
 # ══════════════════════════════════════════════════════
