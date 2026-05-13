@@ -310,18 +310,38 @@ def cam_stream():
 
 @app.route("/latest.jpg")
 def latest():
-    path = os.path.join(STREAM_DIR, "latest.jpg")
-    if not os.path.exists(path):
-        return "No stream yet", 404
-    with open(path, "rb") as f:
-        data = f.read()
-    return data, 200, {
-        "Content-Type":  "image/jpeg",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma":        "no-cache",
-        "Expires":       "0"
-    }
 
+    path = os.path.join(STREAM_DIR, "latest.jpg")
+
+    # No image has ever been received
+    if not os.path.exists(path):
+        return "No stream available", 404
+
+    try:
+
+        # Check how old the image is
+        image_age = time.time() - os.path.getmtime(path)
+
+        # If image older than 5 seconds,
+        # assume ESP32-CAM disconnected
+        if image_age > 5:
+
+            print("Camera offline — latest.jpg expired")
+
+            return "Camera offline", 404
+
+        # Send latest frame
+        return send_file(
+            path,
+            mimetype="image/jpeg",
+            max_age=0
+        )
+
+    except Exception as e:
+
+        print("latest.jpg error:", e)
+
+        return "Stream error", 500
 
 # ══════════════════════════════════════════════════════
 # MOTION CAPTURE — save PIR-triggered photo
