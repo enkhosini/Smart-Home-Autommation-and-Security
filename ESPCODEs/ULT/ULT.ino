@@ -8,11 +8,11 @@
 #include <ESP32Servo.h>
 
 // ---------------- WIFI ----------------
-const char* ssid     = "Hisense T2 Pro";
-const char* password = "Ambani09";
+const char* ssid     = "A67C";
+const char* password = "ga_group7";
 
-IPAddress local_IP(192,168,159,68);
-IPAddress gateway(192,168,159,62);
+IPAddress local_IP(10,192,156,67);
+IPAddress gateway(10,192,156,61);
 IPAddress subnet(255, 255, 255, 0);
 
 // ---------------- PINS ----------------
@@ -43,7 +43,7 @@ void sendToFlask(float distance, const String& event) {
   }
 
   HTTPClient http;
-  http.begin("http://192.168.159.62:5000/ultson_sensor");
+  http.begin("http://10.192.156.61:5000/ultson_sensor");
   http.addHeader("Content-Type", "application/json");
   http.setTimeout(3000);
 
