@@ -1,15 +1,4 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <title>LDR</title>
-</head>
-
-<body>
-
-<h1>LDR Sensor</h1>
-
-<p>Value: {{ data.value }}</p>
-<p>Status: {{ <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -167,6 +156,7 @@ tr:hover{
 </div>
 
 <script>
+
 const labels = {{ chart_labels | tojson }};
 const values = {{ chart_values | tojson }};
 
@@ -200,10 +190,6 @@ setTimeout(() => {
     location.reload();
 }, 5000);
 </script>
-
-</body>
-</html> }}</p>
-<p>Time: {{ data.time }}</p>
 
 </body>
 </html>
