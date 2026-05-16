@@ -1,0 +1,408 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #fff;
+  color: #000;
+}
+
+/* NAVBAR */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 50px;
+  height: 70px;
+  background: #000;
+  border-bottom: 1px solid #333;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  z-index: 1000;
+  list-style: none;
+}
+
+.navbar-brand {
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.8px;
+  color: #fff;
+}
+
+
+.navbar li {
+  position: relative;
+}
+
+.navbar a {
+  display: block;
+  padding: 25px 20px;
+  text-decoration: none;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  transition: border 0.3s;
+}
+
+.navbar a:hover {
+  border-bottom-color: #fff;
+}
+
+.features {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #1a1a1a;
+  list-style: none;
+  min-width: 200px;
+  border: 1px solid #333;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.dropdown:hover .features {
+  display: block;
+}
+
+.features li {
+  border-bottom: 1px solid #333;
+}
+
+.features li:last-child {
+  border-bottom: none;
+}
+
+.features li a {
+  display: block;
+  padding: 12px 16px;
+  border-bottom: none;
+  font-size: 12px;
+  color: #fff !important;
+}
+
+.navbar .dropdown .features li a {
+  color: #000 !important;
+}
+
+
+.features li a:hover {
+  background: #333;
+  color: #fff !important;
+}
+
+/* BUTTONS */
+.btn {
+  display: inline-block;
+  padding: 14px 40px;
+  text-decoration: none;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 13px;
+  border: 2px solid #000;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-dark {
+  background: #000;
+  color: #fff;
+}
+
+.btn-dark:hover {
+  background: #fff;
+  color: #000;
+}
+
+.btn-light {
+  background: #fff;
+  color: #000;
+}
+
+.btn-light:hover {
+  background: #000;
+  color: #fff;
+}
+
+/* HOME PAGE */
+.home {
+  margin-top: 70px;
+  display: flex;
+  height: calc(100vh - 70px);
+}
+
+.home-left {
+  flex: 1;
+  background: #fff;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  border-right: 3px solid #000;
+}
+
+.home-left h1 {
+  font-size: 50px;
+  font-weight: 700;
+  line-height: 1.2;
+  max-width: 500px;
+}
+
+.home-left p {
+  font-size: 15px;
+  margin-top: 20px;
+  opacity: 0.8;
+  max-width: 500px;
+  line-height: 1.6;
+}
+
+.home-right {
+  flex: 1;
+  background: #fff;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+}
+
+.home-right h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  max-width: 500px;
+}
+
+.home-right p {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 30px;
+  max-width: 500px;
+  line-height: 1.6;
+}
+
+/* TEAM PAGE */
+.team-section {
+  margin-top: 70px;
+  padding: 80px 50px;
+  background: #f5f5f5;
+  min-height: calc(100vh - 70px);
+}
+
+.team-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.team-section h1 {
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.team-section > .team-container > p {
+  text-align: center;
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 60px;
+}
+
+.github-link {
+  margin-bottom: 40px !important;
+}
+
+.github-link a {
+  display: inline-block;
+  padding: 12px 32px;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border: 2px solid #000;
+  transition: all 0.3s;
+}
+
+.github-link a:hover {
+  background: #fff;
+  color: #000;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+}
+
+.team-card {
+  background: #fff;
+  padding: 40px;
+  border: 1px solid #eee;
+  transition: all 0.3s;
+}
+
+.team-card:hover {
+  transform: translateY(-8px);
+  border-color: #000;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.team-card.leader {
+  border-left: 5px solid #000;
+}
+
+.card-header {
+  margin-bottom: 20px;
+}
+
+.team-card h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.role {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #666;
+  letter-spacing: 0.5px;
+}
+
+.team-card.leader .role {
+  color: #000;
+  font-weight: 700;
+}
+
+.description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .home {
+    flex-direction: column;
+  }
+
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 20px;
+  }
+
+  .navbar-brand {
+    font-size: 16px;
+  }
+
+  .navbar a {
+    padding: 25px 12px;
+    font-size: 11px;
+  }
+
+  .home-left,
+  .home-right {
+    padding: 40px 30px;
+  }
+
+  .home-left h1 {
+    font-size: 32px;
+  }
+
+  .home-right h2 {
+    font-size: 24px;
+  }
+
+  .team-section {
+    padding: 60px 30px;
+  }
+
+  .team-section h1 {
+    font-size: 36px;
+  }
+
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding: 0 15px;
+    height: 60px;
+  }
+
+  .navbar-brand {
+    font-size: 14px;
+  }
+
+  .navbar a {
+    padding: 20px 8px;
+    font-size: 10px;
+  }
+
+  .home-left,
+  .home-right {
+    padding: 40px 20px;
+  }
+
+  .home-left h1 {
+    font-size: 24px;
+  }
+
+  .home-right h2 {
+    font-size: 20px;
+  }
+
+  .btn {
+    padding: 12px 30px;
+    font-size: 12px;
+  }
+
+  .team-section {
+    padding: 40px 20px;
+  }
+
+  .team-section h1 {
+    font-size: 28px;
+  }
+
+  .team-card {
+    padding: 24px;
+  }
+
+  .team-card h2 {
+    font-size: 18px;
+  }
+}
+
+/* LIGHT DROPDOWN STYLE */
+.dropdown-menu {
+  background-color: #fff !important;
+  border: 1px solid #ddd !important;
+}
+
+.dropdown-item {
+  color: #000 !important;
+  font-size: 13px;
+}
+
+.dropdown-item:hover {
+  background-color: #f2f2f2 !important;
+  color: #000 !important;
+}

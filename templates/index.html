@@ -1,37 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Smart Home</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='fanelo.css') }}">
-</head>
+{% extends "base.html" %}
 
-<body>
+{% block title %}Home - Smart Home System{% endblock %}
 
-<ul class="navbar">
-  <li><a href="{{ url_for('home') }}">Home</a></li>
+{% block content %}
 
-  <li class="dropdown">
-    <a href="#">Nodes</a>
-    <ul class="features">
-      <li><a href="{{ url_for('dht22_sensor') }}">NODE 1(DHT22)</a></li>
-      <li><a href="{{ url_for('ultson_sensor') }}">NODE 2(Ultrasonic)</a></li>
-      <li><a href="{{ url_for('pir_sensor') }}">NODE 3(PIR)</a></li>
-      <li><a href="{{ url_for('camera') }}">NODE 4(Camera)</a></li>
-      <li><a href="{{ url_for('ldr_sensor') }}">NODE 5(LDR)</a></li>
+<div class="home">
 
-    </ul>
-  </li>
+  <!-- LEFT SIDE -->
+  <div class="home-left">
+    <div>
+      <h1>Smart Home System</h1>
+      <p>
+        A real-time IoT monitoring system for sensors including temperature,
+        motion, distance, light, and camera nodes.
+      </p>
 
-  <li><a href="{{ url_for('about') }}">About</a></li>
-  <li><a href="{{ url_for('admin') }}">Admin</a></li>
-</ul>
-
-<section class="home">
-  <div class="home-container">
-    <h1>Smart Home System</h1>
-    <p>Monitor and control your home easily.</p>
+      <a href="/team" class="btn btn-dark">Meet the Team</a>
+    </div>
   </div>
-</section>
 
-</body>
-</html>
+  <!-- RIGHT SIDE -->
+  <div class="home-right">
+    <div>
+      <h2>Live Monitoring Dashboard</h2>
+      <p>
+        View sensor data from multiple nodes and track environmental changes
+        in real time. <br>All available from the items in the <strong>NODES</strong> dropdown menu
+      </p>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

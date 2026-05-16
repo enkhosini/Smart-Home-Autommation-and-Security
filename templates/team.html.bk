@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Dev Team - Smart Home System{% endblock %}
+
+{% block content %}
+<section class="team-section">
+  <div class="container">
+    <h1 class="text-center mb-3">Development Team</h1>
+    <p class="text-center text-muted mb-4">Meet the talented developers behind Smart Home System</p>
+    <p class="text-center mb-5">
+      <a href="https://github.com/enkhosini/Smart-Home-Autommation-and-Security" target="_blank" class="btn btn-dark">
+        View on GitHub
+      </a>
+    </p>
+    
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-4">
+        <div class="card team-card leader h-100">
+          <div class="card-body">
+            <h5 class="card-title">Fanelo Mabasa</h5>
+            <p class="card-text text-muted"><small class="badge bg-dark">Group Leader</small></p>
+            <p class="card-text">Leading the Smart Home System project with vision and technical expertise.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="card team-card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Maambele Rakhunuana</h5>
+            <p class="card-text text-muted"><small class="badge bg-secondary">Developer</small></p>
+            <p class="card-text">Contributing to the core development of sensor integration and backend systems.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="card team-card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Bridgete Makau</h5>
+            <p class="card-text text-muted"><small class="badge bg-secondary">Developer</small></p>
+            <p class="card-text">Building responsive frontend interfaces and user experience enhancements.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="card team-card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Sobongankosini Mdlovu</h5>
+            <p class="card-text text-muted"><small class="badge bg-secondary">Developer</small></p>
+            <p class="card-text">Developing IoT sensor network communication and data processing modules.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="card team-card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Muzi Mnisi</h5>
+            <p class="card-text text-muted"><small class="badge bg-secondary">Developer</small></p>
+            <p class="card-text">Implementing system automation features and intelligent monitoring capabilities.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

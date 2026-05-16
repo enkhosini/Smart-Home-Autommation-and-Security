@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Smart Home System - Home{% endblock %}
+
+{% block content %}
+<section class="home">
+  <div class="home-left">
+    <div>
+      <h1>Smart Home System</h1>
+      <p>Monitor and control your home with intelligent automation powered by advanced sensor networks.</p>
+    </div>
+  </div>
+  <div class="home-right">
+    <div>
+      <h2>Real-Time Monitoring</h2>
+      <p>Experience seamless control over your home environment with our cutting-edge IoT sensors and intuitive interface. Stay connected, stay secure.</p>
+      <a href="/team" class="btn btn-light">Get Started</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

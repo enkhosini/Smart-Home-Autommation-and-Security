@@ -1,11 +1,87 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team</title>
-</head>
-<body>
-    
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Team - Smart Home System{% endblock %}
+
+{% block content %}
+
+<section class="team-section">
+
+  <div class="team-container">
+
+    <h1>Our Team</h1>
+    <p>Meet the developers behind the Smart Home System project</p>
+
+    <div class="github-link">
+      <a href="https://github.com/enkhosini/Smart-Home-Autommation-and-Security" target="_blank">
+        View GitHub Repository
+      </a>
+    </div>
+
+    <div class="team-grid">
+
+      <div class="team-card leader">
+        <div class="card-header">
+          <h2>Team Leader <br>Fanelo Mabasa</h2>
+          <span class="role">Backend / IoT Integration</span>
+        </div>
+        <p class="description">
+          Responsible for system architecture, backend APIs, and sensor integration.
+        </p>
+      </div>
+
+      <div class="team-card">
+        <div class="card-header">
+          <h2>Maambele Rakhunuana <br>Developer</h2>
+          <span class="role">UI / UX Design</span>
+        </div>
+        <p class="description">
+          Designs and builds the user interface for the smart home dashboard.
+        </p>
+      </div>
+
+      <div class="team-card">
+        <div class="card-header">
+          <h2>Bridgete Makau <br>Developer</h2>
+          <span class="role">Hardware & Sensors</span>
+        </div>
+        <p class="description">
+          Works on ESP32 nodes, sensors, and real-time data transmission.
+        </p>
+      </div>
+
+      <div class="team-card">
+        <div class="card-header">
+          <h2>Sobongankosini Mdlovu <br>Developer</h2>
+          <span class="role">Deployment & Hosting</span>
+        </div>
+        <p class="description">
+          Handles deployment, server setup, and system reliability.
+        </p>
+      </div>
+
+        <div class="team-card">
+        <div class="card-header">
+          <h2>Muzi Mnini <br>Developer</h2>
+          <span class="role">Deployment & Hosting</span>
+        </div>
+        <p class="description">
+          Handles deployment, server setup, and system reliability.
+        </p>
+      </div>
+
+      <div class="team-card">
+        <div class="card-header">
+          <h2>Mr DO Seriki <br>Supervisor/Lecturer</h2>
+          <span class="role">Deployment & Hosting</span>
+        </div>
+        <p class="description">
+          Handles deployment, server setup, and system reliability.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+{% endblock %}
