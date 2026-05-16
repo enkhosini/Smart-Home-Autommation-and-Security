@@ -1,179 +1,91 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>DHT22 Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% extends "base.html" %}
 
-<style>
-body {
-    background:#0d0d0d;
-    color:white;
-    font-family:Arial;
-}
+{% block title %}DHT22 Dashboard{% endblock %}
 
-header {
-    text-align:center;
-    padding:20px;
-    border-bottom:2px solid #25a7ff;
-}
+{% block content %}
 
-header h1 {
-    color:#25a7ff;
-}
-
-.container {
-    width:90%;
-    margin:auto;
-    margin-top:30px;
-}
-
-.card {
-    background:#1a1a1a;
-    padding:20px;
-    border-radius:10px;
-    margin-bottom:20px;
-}
-
-.section-title {
-    color:#25a7ff;
-    font-size:22px;
-    margin-bottom:15px;
-    border-left:4px solid #25a7ff;
-    padding-left:10px;
-}
-
-.live {
-    display:flex;
-    justify-content:space-around;
-    text-align:center;
-}
-
-.box {
-    background:#111;
-    padding:20px;
-    border-radius:10px;
-    width:45%;
-}
-
-.value {
-    font-size:50px;
-    color:#25a7ff;
-    font-weight:bold;
-}
-
-.unit {
-    color:#999;
-}
-
-.fan {
-    margin-top:15px;
-    padding:10px 20px;
-    border-radius:20px;
-    display:inline-block;
-}
-
-.on { background:#00c853; }
-.off { background:#ff5252; }
-
-table {
-    width:100%;
-    border-collapse:collapse;
-}
-
-th, td {
-    padding:12px;
-    border-top:1px solid #333;
-}
-
-th {
-    color:#25a7ff;
-}
-
-.chart {
-    height:400px;
-}
-</style>
-</head>
-
-<body>
-
-<header>
-<h1>🌡️ DHT22 Sensor Dashboard</h1>
+<header class="pir-header">
+    <h1>🌡️ DHT22 Sensor Dashboard</h1>
 </header>
 
 <div class="container">
 
-<!-- LIVE -->
-<div class="card">
+    <!-- LIVE -->
+    <div class="card">
 
-<div class="section-title">Live Readings</div>
+        <h2>Live Status</h2>
 
-<div class="live">
+        <br>
 
-<div class="box">
-<div class="value">{{ dht22.temperature }}</div>
-<div class="unit">°C</div>
-</div>
+        <div class="live dht-live">
 
-<div class="box">
-<div class="value">{{ dht22.humidity }}</div>
-<div class="unit">%</div>
-</div>
+            <div class="box">
+                <div class="live-value dht-temp">
+                    {{ dht22.temperature }}
+                </div>
+                <p>Temperature (°C)</p>
+            </div>
 
-</div>
+            <div class="box">
+                <div class="live-value dht-hum">
+                    {{ dht22.humidity }}
+                </div>
+                <p>Humidity (%)</p>
+            </div>
 
-<div class="fan {% if dht22.fan_status == 'fan_fast' %}on{% else %}off{% endif %}">
-{{ dht22.fan_status }}
-</div>
+        </div>
 
-<p style="color:gray;margin-top:10px;">
-Updated: {{ dht22.time }}
-</p>
+        <span class="state dht-state {{ dht22.fan_status }}">
+            {{ dht22.fan_status }}
+        </span>
 
-</div>
+        <br><br>
 
-<!-- CHART -->
-<div class="card">
+        <p><strong>Updated:</strong> {{ dht22.time }}</p>
 
-<div class="section-title">Temperature & Humidity Graph</div>
+    </div>
 
-<canvas id="chart"></canvas>
+    <!-- GRAPH -->
+    <div class="card">
 
-</div>
+        <h2>Sensor Graph</h2>
 
-<!-- HISTORY -->
-<div class="card">
+        <br>
 
-<div class="section-title">History</div>
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
 
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Time</th>
-<th>Temp</th>
-<th>Humidity</th>
-</tr>
-</thead>
+    </div>
 
-<tbody>
+    <!-- HISTORY -->
+    <div class="card">
 
-{% for t, h in history %}
+        <h2>History</h2>
 
-<tr>
-<td>{{ loop.index }}</td>
-<td>{{ t.timestamp }}</td>
-<td>{{ t.reading_value }} °C</td>
-<td>{{ h.reading_value }} %</td>
-</tr>
+        <br>
 
-{% endfor %}
+        <table>
 
-</tbody>
-</table>
+            <tr>
+                <th>#</th>
+                <th>Time</th>
+                <th>Temp</th>
+                <th>Humidity</th>
+            </tr>
 
-</div>
+            {% for t, h in history %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ t.timestamp }}</td>
+                <td>{{ t.reading_value }} °C</td>
+                <td>{{ h.reading_value }} %</td>
+            </tr>
+            {% endfor %}
+
+        </table>
+
+    </div>
 
 </div>
 
@@ -189,27 +101,30 @@ data: {
 labels: labels,
 datasets: [
 {
-label: "Temperature (°C)",
+label: "Temperature",
 data: temp,
-borderColor: "#ff5252",
-fill:true
+borderColor: "#e74c3c",
+fill: true,
+tension: 0.4
 },
 {
-label: "Humidity (%)",
+label: "Humidity",
 data: hum,
-borderColor: "#25a7ff",
-fill:true
+borderColor: "#27ae60",
+fill: true,
+tension: 0.4
 }
 ]
 },
 options: {
-responsive:true,
-scales:{
-x:{ticks:{color:"white"}},
-y:{ticks:{color:"white"}}
+responsive: true,
+maintainAspectRatio: false,
+scales: {
+x: { ticks: { color: "white" } },
+y: { ticks: { color: "white" } }
 },
-plugins:{
-legend:{labels:{color:"white"}}
+plugins: {
+legend: { labels: { color: "white" } }
 }
 }
 });
@@ -218,5 +133,4 @@ setTimeout(() => location.reload(), 5000);
 
 </script>
 
-</body>
-</html>
+{% endblock %}

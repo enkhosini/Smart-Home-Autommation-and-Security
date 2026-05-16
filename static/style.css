@@ -1,3 +1,4 @@
+/* RESET */
 * {
   margin: 0;
   padding: 0;
@@ -8,6 +9,11 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: #fff;
   color: #000;
+}
+
+.auth-page {
+  overflow: hidden;
+  height: 100vh;
 }
 
 /* NAVBAR */
@@ -23,17 +29,14 @@ body {
   width: 100%;
   top: 0;
   z-index: 1000;
-  list-style: none;
 }
 
 .navbar-brand {
   font-size: 20px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: -0.8px;
   color: #fff;
 }
-
 
 .navbar li {
   position: relative;
@@ -47,54 +50,25 @@ body {
   font-size: 13px;
   font-weight: 500;
   text-transform: uppercase;
-  border-bottom: 2px solid transparent;
-  transition: border 0.3s;
 }
 
 .navbar a:hover {
-  border-bottom-color: #fff;
+  border-bottom: 2px solid #fff;
 }
 
-.features {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #1a1a1a;
-  list-style: none;
-  min-width: 200px;
-  border: 1px solid #333;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+/* DROPDOWN (BOOTSTRAP) */
+.dropdown-menu {
+  background: #fff !important;
+  border: 1px solid #ddd !important;
 }
 
-.dropdown:hover .features {
-  display: block;
-}
-
-.features li {
-  border-bottom: 1px solid #333;
-}
-
-.features li:last-child {
-  border-bottom: none;
-}
-
-.features li a {
-  display: block;
-  padding: 12px 16px;
-  border-bottom: none;
-  font-size: 12px;
-  color: #fff !important;
-}
-
-.navbar .dropdown .features li a {
+.dropdown-item {
   color: #000 !important;
+  font-size: 13px;
 }
 
-
-.features li a:hover {
-  background: #333;
-  color: #fff !important;
+.dropdown-item:hover {
+  background: #f2f2f2 !important;
 }
 
 /* BUTTONS */
@@ -107,7 +81,7 @@ body {
   font-size: 13px;
   border: 2px solid #000;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: 0.3s;
 }
 
 .btn-dark {
@@ -120,75 +94,45 @@ body {
   color: #000;
 }
 
-.btn-light {
-  background: #fff;
-  color: #000;
-}
-
-.btn-light:hover {
-  background: #000;
-  color: #fff;
-}
-
-/* HOME PAGE */
-.home {
+/* HOME BACKGROUND */
+.home-bg {
+  position: relative;
+  min-height: calc(100vh - 70px);
   margin-top: 70px;
+  background: url("/static/images/image.png") center/cover no-repeat;
+}
+
+/* OVERLAY */
+.home-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* HOME CONTENT */
+.home {
+  position: relative;
+  z-index: 2;
   display: flex;
   height: calc(100vh - 70px);
 }
 
-.home-left {
-  flex: 1;
-  background: #fff;
-  color: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px;
-  border-right: 3px solid #000;
-}
-
-.home-left h1 {
-  font-size: 50px;
-  font-weight: 700;
-  line-height: 1.2;
-  max-width: 500px;
-}
-
-.home-left p {
-  font-size: 15px;
-  margin-top: 20px;
-  opacity: 0.8;
-  max-width: 500px;
-  line-height: 1.6;
-}
-
+.home-left,
 .home-right {
   flex: 1;
-  background: #fff;
-  color: #000;
+  padding: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 60px;
+  color: #fff;
 }
 
-.home-right h2 {
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  max-width: 500px;
-}
-
+.home-left p,
 .home-right p {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 30px;
-  max-width: 500px;
-  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-/* TEAM PAGE */
+/* TEAM */
 .team-section {
   margin-top: 70px;
   padding: 80px 50px;
@@ -198,7 +142,7 @@ body {
 
 .team-container {
   max-width: 1200px;
-  margin: 0 auto;
+  margin: auto;
 }
 
 .team-section h1 {
@@ -208,33 +152,10 @@ body {
   margin-bottom: 16px;
 }
 
-.team-section > .team-container > p {
+.team-section p {
   text-align: center;
-  font-size: 16px;
   color: #666;
   margin-bottom: 60px;
-}
-
-.github-link {
-  margin-bottom: 40px !important;
-}
-
-.github-link a {
-  display: inline-block;
-  padding: 12px 32px;
-  background: #000;
-  color: #fff;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-  border: 2px solid #000;
-  transition: all 0.3s;
-}
-
-.github-link a:hover {
-  background: #fff;
-  color: #000;
 }
 
 .team-grid {
@@ -247,7 +168,7 @@ body {
   background: #fff;
   padding: 40px;
   border: 1px solid #eee;
-  transition: all 0.3s;
+  transition: 0.3s;
 }
 
 .team-card:hover {
@@ -256,153 +177,44 @@ body {
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 
-.team-card.leader {
-  border-left: 5px solid #000;
-}
-
-.card-header {
-  margin-bottom: 20px;
-}
-
-.team-card h2 {
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.role {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #666;
-  letter-spacing: 0.5px;
-}
-
-.team-card.leader .role {
-  color: #000;
-  font-weight: 700;
-}
-
-.description {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.6;
-}
-
 /* RESPONSIVE */
-@media (max-width: 1024px) {
-  .home {
-    flex-direction: column;
-  }
-
-  .team-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 768px) {
-  .navbar {
-    padding: 0 20px;
-  }
-
-  .navbar-brand {
-    font-size: 16px;
-  }
-
-  .navbar a {
-    padding: 25px 12px;
-    font-size: 11px;
-  }
-
-  .home-left,
-  .home-right {
-    padding: 40px 30px;
-  }
-
-  .home-left h1 {
-    font-size: 32px;
-  }
-
-  .home-right h2 {
-    font-size: 24px;
-  }
-
-  .team-section {
-    padding: 60px 30px;
-  }
-
-  .team-section h1 {
-    font-size: 36px;
-  }
-
-  .team-grid {
-    grid-template-columns: 1fr;
-  }
+  .navbar { padding: 0 20px; }
+  .home { flex-direction: column; }
+  .team-section { padding: 60px 20px; }
 }
 
-@media (max-width: 480px) {
-  .navbar {
-    padding: 0 15px;
-    height: 60px;
-  }
-
-  .navbar-brand {
-    font-size: 14px;
-  }
-
-  .navbar a {
-    padding: 20px 8px;
-    font-size: 10px;
-  }
-
-  .home-left,
-  .home-right {
-    padding: 40px 20px;
-  }
-
-  .home-left h1 {
-    font-size: 24px;
-  }
-
-  .home-right h2 {
-    font-size: 20px;
-  }
-
-  .btn {
-    padding: 12px 30px;
-    font-size: 12px;
-  }
-
-  .team-section {
-    padding: 40px 20px;
-  }
-
-  .team-section h1 {
-    font-size: 28px;
-  }
-
-  .team-card {
-    padding: 24px;
-  }
-
-  .team-card h2 {
-    font-size: 18px;
-  }
+/* REMOVE BUTTON BORDERS GLOBALLY (login page style fix) */
+.btn {
+  border: none !important;
+  box-shadow: none !important;
 }
 
-/* LIGHT DROPDOWN STYLE */
-.dropdown-menu {
-  background-color: #fff !important;
-  border: 1px solid #ddd !important;
+/* optional: keep primary button clean */
+.btn-primary {
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.dropdown-item {
-  color: #000 !important;
-  font-size: 13px;
+/* optional: clean light buttons */
+.btn-light {
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.dropdown-item:hover {
-  background-color: #f2f2f2 !important;
-  color: #000 !important;
+/* remove focus outline (clean UI look) */
+.btn:focus,
+.btn:active {
+  box-shadow: none !important;
+  outline: none !important;
+}
+.auth-bg {
+  position: fixed;
+  inset: 0;                 /* locks to full screen */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: url("/static/images/image.png") center/cover no-repeat;
+  overflow: hidden;         /* prevents scrolling */
 }

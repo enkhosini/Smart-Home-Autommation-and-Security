@@ -6,7 +6,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import os
-import io
 import time
 
 app = Flask(__name__)
@@ -35,7 +34,7 @@ os.makedirs("static", exist_ok=True)
 # LATEST SENSOR VALUES
 # ======================================================
 latest_pir = {
-    "device_id": "maambele_esp",
+    "device_id": "sobonga_esp",
     "value": 0,
     "event": "No Motion",
     "armed": False,
@@ -43,14 +42,14 @@ latest_pir = {
 }
 
 latest_ldr = {
-    "device_id": "fanelo_esp",
+    "device_id": "bridgete_esp",
     "value": 0,
     "event": "dark",
     "time": "--"
 }
 
 latest_ultrasonic = {
-    "device_id": "bridgette_esp",
+    "device_id": "fanelo_esp",
     "distance_cm": 0,
     "event": "",
     "time": "--"
@@ -194,7 +193,7 @@ def pir_sensor():
         if not data:
             return {"status": "error"}, 400
 
-        device_id = data.get("device_id", "maambele_esp")
+        device_id = data.get("device_id", "sobonga_esp")
 
         readings = data.get("readings", {})
 
