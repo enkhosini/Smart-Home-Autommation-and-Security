@@ -1,136 +1,118 @@
 {% extends "base.html" %}
-
 {% block title %}DHT22 Dashboard{% endblock %}
-
 {% block content %}
-
-<header class="pir-header">
-    <h1>🌡️ DHT22 Sensor Dashboard</h1>
-</header>
-
-<div class="container">
-
-    <!-- LIVE -->
-    <div class="card">
-
-        <h2>Live Status</h2>
-
-        <br>
-
-        <div class="live dht-live">
-
-            <div class="box">
-                <div class="live-value dht-temp">
-                    {{ dht22.temperature }}
-                </div>
-                <p>Temperature (°C)</p>
-            </div>
-
-            <div class="box">
-                <div class="live-value dht-hum">
-                    {{ dht22.humidity }}
-                </div>
-                <p>Humidity (%)</p>
-            </div>
-
-        </div>
-
-        <span class="state dht-state {{ dht22.fan_status }}">
-            {{ dht22.fan_status }}
-        </span>
-
-        <br><br>
-
-        <p><strong>Updated:</strong> {{ dht22.time }}</p>
-
+<div class="team-section">
+  <div class="team-container">
+    <h1>DHT22 Sensor Dashboard</h1>
+    <p>Real-time temperature and humidity monitoring from ESP32 DHT22 node</p>
+    <!-- LIVE STATUS -->
+    <div class="card mb-4 p-4 shadow-sm">
+      <h2>Live Status</h2>
+      <br>
+      <div class="live-value text-info" style="font-size: 2.5rem; font-weight: bold;">
+        {{ dht22.temperature }}°C
+      </div>
+      <p>Temperature</p>
+      <div class="live-value text-primary" style="font-size: 2.5rem; font-weight: bold; margin-top: 1rem;">
+        {{ dht22.humidity }}%
+      </div>
+      <p>Humidity</p>
+      <span class="state {{ dht22.fan_status }} text-white p-2 d-inline-block mt-3" style="background-color: {% if dht22.fan_status == 'ON' %}#27ae60{% else %}#95a5a6{% endif %}; border-radius: 5px;">
+        Fan: {{ dht22.fan_status }}
+      </span>
+      <br><br>
+      <p><strong>Device:</strong> DHT22_ESP32</p>
+      <p><strong>Updated:</strong> {{ dht22.time }}</p>
     </div>
-
     <!-- GRAPH -->
-    <div class="card">
-
-        <h2>Sensor Graph</h2>
-
-        <br>
-
-        <div class="chart-container">
-            <canvas id="chart"></canvas>
-        </div>
-
+    <div class="card mb-4 p-4 shadow-sm">
+      <h2>Sensor Graph</h2>
+      <br>
+      <div style="height:400px;">
+        <canvas id="chart"></canvas>
+      </div>
     </div>
-
     <!-- HISTORY -->
-    <div class="card">
-
-        <h2>History</h2>
-
-        <br>
-
-        <table>
-
-            <tr>
-                <th>#</th>
-                <th>Time</th>
-                <th>Temp</th>
-                <th>Humidity</th>
-            </tr>
-
-            {% for t, h in history %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ t.timestamp }}</td>
-                <td>{{ t.reading_value }} °C</td>
-                <td>{{ h.reading_value }} %</td>
-            </tr>
-            {% endfor %}
-
-        </table>
-
+    <div class="card p-4 shadow-sm">
+      <h2>Sensor History</h2>
+      <br>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Time</th>
+            <th>Temperature</th>
+            <th>Humidity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t, h in history %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ t.timestamp }}</td>
+            <td class="text-info fw-bold">{{ t.reading_value }}°C</td>
+            <td class="text-primary fw-bold">{{ h.reading_value }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-
+  </div>
 </div>
-
+<!-- CHART -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-
 const labels = {{ chart_labels | tojson }};
 const temp = {{ chart_temp | tojson }};
 const hum = {{ chart_humidity | tojson }};
-
-new Chart(document.getElementById("chart"), {
-type: "line",
-data: {
-labels: labels,
-datasets: [
-{
-label: "Temperature",
-data: temp,
-borderColor: "#e74c3c",
-fill: true,
-tension: 0.4
-},
-{
-label: "Humidity",
-data: hum,
-borderColor: "#27ae60",
-fill: true,
-tension: 0.4
-}
-]
-},
-options: {
-responsive: true,
-maintainAspectRatio: false,
-scales: {
-x: { ticks: { color: "white" } },
-y: { ticks: { color: "white" } }
-},
-plugins: {
-legend: { labels: { color: "white" } }
-}
-}
+const ctx = document.getElementById('chart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Temperature (°C)',
+        data: temp,
+        borderColor: '#e74c3c',
+        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2,
+        pointRadius: 5
+      },
+      {
+        label: 'Humidity (%)',
+        data: hum,
+        borderColor: '#27ae60',
+        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2,
+        pointRadius: 5
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: {
+        ticks: { color: '#000' },
+        grid: { color: '#eee' }
+      },
+      y: {
+        ticks: { color: '#000' },
+        grid: { color: '#eee' }
+      }
+    },
+    plugins: {
+      legend: { labels: { color: '#000' } }
+    }
+  }
 });
-
-setTimeout(() => location.reload(), 5000);
-
+setTimeout(() => {
+  location.reload();
+}, 5000);
 </script>
-
 {% endblock %}

@@ -1,195 +1,110 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LDR Sensor Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
-
-body{
-    background:#0d0d0d;
-    color:white;
-    font-family:Arial, Helvetica, sans-serif;
-}
-
-header{
-    background:#111;
-    padding:20px;
-    text-align:center;
-    border-bottom:2px solid orange;
-}
-
-header h1{
-    color:orange;
-}
-
-.container{
-    width:90%;
-    max-width:1200px;
-    margin:auto;
-    margin-top:30px;
-}
-
-.card{
-    background:#1a1a1a;
-    padding:25px;
-    border-radius:10px;
-    margin-bottom:25px;
-}
-
-.live-value{
-    font-size:60px;
-    color:orange;
-    font-weight:bold;
-}
-
-.state{
-    padding:8px 20px;
-    border-radius:20px;
-    display:inline-block;
-    margin-top:10px;
-    font-weight:bold;
-}
-
-.bright{
-    background:green;
-}
-
-.dark{
-    background:red;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-}
-
-th, td{
-    padding:12px;
-    border-bottom:1px solid #333;
-    text-align:left;
-}
-
-th{
-    color:orange;
-}
-
-tr:hover{
-    background:#222;
-}
-</style>
-</head>
-
-<body>
-
-<header>
+{% extends "base.html" %}
+{% block title %}LDR Light Sensor Dashboard{% endblock %}
+{% block content %}
+<div class="team-section">
+  <div class="team-container">
     <h1>LDR Light Sensor Dashboard</h1>
-</header>
-
-<div class="container">
-
-    <!-- LIVE DATA -->
-    <div class="card">
-        <h2>Live Reading</h2>
-        <br>
-
-        <div class="live-value">
-            {{ ldr.value if ldr else 0 }}
-        </div>
-
-        <p>ADC Value (0 - 4095)</p>
-
-        <span class="state {% if ldr.event == 'bright' %}bright{% else %}dark{% endif %}">
-            {{ ldr.event|upper if ldr else "NO DATA" }}
-        </span>
-
-        <br><br>
-
-        <p><strong>Device:</strong> {{ ldr.device_id if ldr else "ESP32" }}</p>
-        <p><strong>Updated:</strong> {{ ldr.time if ldr else "--:--:--" }}</p>
+    <p>Real-time light level detection from ESP32 LDR node</p>
+    <!-- LIVE STATUS -->
+    <div class="card mb-4 p-4 shadow-sm">
+      <h2>Live Reading</h2>
+      <br>
+      <div class="live-value {% if ldr.event == 'bright' %}text-warning{% else %}text-dark{% endif %}" style="font-size: 3rem; font-weight: bold;">
+        {{ ldr.value if ldr else 0 }}
+      </div>
+      <p style="margin-top: 0.5rem;">ADC Value (0 - 4095)</p>
+      <span class="state {% if ldr.event == 'bright' %}bg-warning{% else %}bg-dark{% endif %} text-white p-2 d-inline-block mt-3" style="border-radius: 5px;">
+        {{ ldr.event|upper if ldr else "NO DATA" }}
+      </span>
+      <br><br>
+      <p><strong>Device:</strong> {{ ldr.device_id if ldr else "ESP32_LDR" }}</p>
+      <p><strong>Threshold:</strong> 500 ADC</p>
+      <p><strong>Updated:</strong> {{ ldr.time if ldr else "--:--:--" }}</p>
     </div>
-
     <!-- GRAPH -->
-    <div class="card">
-        <h2>Last 20 Readings</h2>
-        <br>
+    <div class="card mb-4 p-4 shadow-sm">
+      <h2>Last 20 Readings</h2>
+      <br>
+      <div style="height:400px;">
         <canvas id="ldrChart"></canvas>
+      </div>
     </div>
-
     <!-- HISTORY -->
-    <div class="card">
-        <h2>Reading History</h2>
-        <br>
-
-        <table>
-            <tr>
-                <th>#</th>
-                <th>Time</th>
-                <th>Value</th>
-                <th>Status</th>
-            </tr>
-
-            {% for row in history %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ row.timestamp }}</td>
-                <td>{{ row.reading_value }}</td>
-                <td>
-                    {% if row.reading_value|int >= 500 %}
-                        BRIGHT
-                    {% else %}
-                        DARK
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+    <div class="card p-4 shadow-sm">
+      <h2>Reading History</h2>
+      <br>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Time</th>
+            <th>Value</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in history %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ row.timestamp }}</td>
+            <td class="fw-bold">{{ row.reading_value }}</td>
+            <td>
+              {% if row.reading_value|int >= 500 %}
+                  <span class="text-warning fw-bold">BRIGHT</span>
+              {% else %}
+                  <span class="text-dark fw-bold">DARK</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-
+  </div>
 </div>
-
+<!-- CHART -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-
 const labels = {{ chart_labels | tojson }};
 const values = {{ chart_values | tojson }};
-
 const ctx = document.getElementById('ldrChart').getContext('2d');
-
-new Chart(ctx,{
-    type:'line',
-    data:{
-        labels:labels,
-        datasets:[{
-            label:'LDR Value',
-            data:values,
-            borderColor:'orange',
-            backgroundColor:'rgba(255,165,0,0.2)',
-            fill:true,
-            tension:0.4
-        }]
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'LDR Value',
+      data: values,
+      borderColor: '#ffc107',
+      backgroundColor: 'rgba(255, 193, 7, 0.1)',
+      fill: true,
+      tension: 0.4,
+      borderWidth: 2,
+      pointRadius: 5
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        min: 0,
+        max: 4095,
+        ticks: { color: '#000' },
+        grid: { color: '#eee' }
+      },
+      x: {
+        ticks: { color: '#000' },
+        grid: { color: '#eee' }
+      }
     },
-    options:{
-        responsive:true,
-        scales:{
-            y:{
-                min:0,
-                max:4095
-            }
-        }
+    plugins: {
+      legend: { labels: { color: '#000' } }
     }
+  }
 });
-
 setTimeout(() => {
-    location.reload();
+  location.reload();
 }, 5000);
 </script>
-
-</body>
-</html>
+{% endblock %}

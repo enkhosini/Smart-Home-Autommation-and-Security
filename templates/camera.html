@@ -1,356 +1,105 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Camera Dashboard</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
-
-body{
-    background:#0d0d0d;
-    color:white;
-    font-family:Arial, Helvetica, sans-serif;
-}
-
-header{
-    background:#111;
-    padding:20px;
-    text-align:center;
-    border-bottom:2px solid #e74c3c;
-}
-
-header h1{
-    color:#e74c3c;
-}
-
-header p{
-    color:#888;
-    font-size:13px;
-    margin-top:6px;
-}
-
-.container{
-    width:90%;
-    max-width:1200px;
-    margin:auto;
-    margin-top:30px;
-}
-
-.card{
-    background:#1a1a1a;
-    padding:25px;
-    border-radius:10px;
-    margin-bottom:25px;
-    box-shadow:0 0 10px rgba(0,0,0,0.4);
-}
-
-.card h2{
-    margin-bottom:16px;
-    font-size:1.1rem;
-    color:#e74c3c;
-    border-left:4px solid #e74c3c;
-    padding-left:10px;
-}
-
-/* LIVE FEED */
-
-.live-image{
-    width:100%;
-    max-height:500px;
-    object-fit:contain;
-    border-radius:10px;
-    background:black;
-    border:2px solid #333;
-    display:block;
-}
-
-.live-status{
-    margin-top:10px;
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-size:13px;
-    color:#aaa;
-}
-
-.dot{
-    width:10px;
-    height:10px;
-    border-radius:50%;
-    background:#27ae60;
-    animation:blink 1.2s infinite;
-}
-
-@keyframes blink{
-    0%,100%{opacity:1}
-    50%{opacity:.2}
-}
-
-/* NOTICE */
-
-.pir-notice{
-    background:#1e1e1e;
-    border:1px solid #333;
-    border-left:4px solid #f39c12;
-    border-radius:6px;
-    padding:12px 16px;
-    margin-bottom:24px;
-    font-size:13px;
-    color:#bbb;
-    line-height:1.6;
-}
-
-.pir-notice strong{
-    color:#f39c12;
-}
-
-/* GRAPH */
-
-.chart-container{
-    position:relative;
-    height:500px;
-    width:100%;
-}
-
-canvas{
-    background:#181818;
-    border-radius:10px;
-    padding:10px;
-    width:100%!important;
-}
-
-/* GALLERY */
-
-.gallery{
-    display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
-    gap:20px;
-}
-
-.photo-card{
-    background:#222;
-    border-radius:10px;
-    overflow:hidden;
-    border:1px solid #333;
-    transition:0.3s;
-}
-
-.photo-card:hover{
-    transform:scale(1.03);
-    border-color:#e74c3c;
-}
-
-.photo-card img{
-    width:100%;
-    height:180px;
-    object-fit:cover;
-    display:block;
-}
-
-.photo-info{
-    padding:10px;
-    font-size:13px;
-}
-
-.photo-info strong{
-    color:#e74c3c;
-}
-
-.pir-tag{
-    display:inline-block;
-    background:#e74c3c;
-    color:#fff;
-    font-size:10px;
-    font-weight:700;
-    padding:2px 8px;
-    border-radius:4px;
-    margin-top:6px;
-    letter-spacing:0.5px;
-}
-
-.empty{
-    text-align:center;
-    color:gray;
-    padding:40px;
-    grid-column:1/-1;
-}
-
-.no-stream{
-    text-align:center;
-    padding:60px;
-    color:#555;
-    font-size:14px;
-    display:none;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<header>
-
+{% extends "base.html" %}
+{% block title %}Camera Dashboard{% endblock %}
+{% block content %}
+<div class="team-section">
+  <div class="team-container">
     <h1>GA Security — Camera Dashboard</h1>
-
-    <p>
-        Photos are captured automatically when the PIR sensor detects motion
-    </p>
-
-</header>
-
-<div class="container">
-
+    <p>Real-time motion-triggered camera feed from ESP32-CAM node</p>
+    
     <!-- NOTICE -->
-
-    <div class="pir-notice">
-
-        <strong>PIR-triggered capture:</strong>
-
-        The camera saves photos only when the PIR sensor
-        detects motion.
-
+    <div class="alert alert-info mb-4" style="border-left: 4px solid #f39c12; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 12px 16px; font-size: 13px; color: #bbb;">
+      <strong style="color: #f39c12;">PIR-triggered capture:</strong> The camera saves photos only when the PIR sensor detects motion.
     </div>
-
+    
     <!-- LIVE FEED -->
-
-    <div class="card">
-
-        <h2>Live Camera Feed</h2>
-
-        <img
-            id="liveImg"
-            class="live-image"
-            src=""
-            alt="Live feed"
-        >
-
-        <div id="noStream" class="no-stream">
-            No stream signal yet — waiting for ESP32-CAM…
-        </div>
-
-        <div class="live-status">
-
-            <div class="dot"></div>
-
-            LIVE — refreshes automatically every second
-
-        </div>
-
+    <div class="card mb-4 p-4 shadow-sm">
+      <h2>Live Camera Feed</h2>
+      <br>
+      <img
+        id="liveImg"
+        class="live-image"
+        src=""
+        alt="Live feed"
+        style="width: 100%; max-height: 500px; object-fit: contain; border-radius: 10px; background: black; border: 2px solid #ddd; display: block;"
+      >
+      <div id="noStream" class="no-stream" style="text-align: center; padding: 60px; color: #555; font-size: 14px; display: none;">
+        No stream signal yet — waiting for ESP32-CAM…
+      </div>
+      <div class="live-status" style="margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #aaa;">
+        <div class="dot" style="width: 10px; height: 10px; border-radius: 50%; background: #27ae60; animation: blink 1.2s infinite;"></div>
+        LIVE — refreshes automatically every second
+      </div>
     </div>
 
     <!-- GRAPH -->
-
-    <div class="card">
-
-        <h2>PIR Triggered Captures Graph</h2>
-
-        <div class="chart-container">
-
-            <canvas id="cameraChart"></canvas>
-
-        </div>
-
+    <div class="card mb-4 p-4 shadow-sm">
+      <h2>PIR Triggered Captures Graph</h2>
+      <br>
+      <div style="height: 400px;">
+        <canvas id="cameraChart"></canvas>
+      </div>
     </div>
 
     <!-- GALLERY -->
-
-    <div class="card">
-
-        <h2>
-
-            Captured Photos
-
-            <span
-                style="
-                    font-size:12px;
-                    font-weight:400;
-                    color:#666;
-                    margin-left:8px
-                "
-            >
-                (max 10 stored)
-            </span>
-
-        </h2>
-
-        <div class="gallery" id="galleryGrid">
-
-            {% if photos %}
-
-                {% for photo_id, event_time in photos %}
-
-                <div class="photo-card">
-
-                    <a href="/photo/{{ photo_id }}" target="_blank">
-
-                        <img
-                            src="/photo/{{ photo_id }}"
-                            alt="Capture #{{ photo_id }}"
-                            loading="lazy"
-                        >
-
-                    </a>
-
-                    <div class="photo-info">
-
-                        <strong>Capture #{{ photo_id }}</strong>
-
-                        <br><br>
-
-                        {% if event_time %}
-
-                            {{ event_time.strftime('%Y-%m-%d') }}
-
-                            <br>
-
-                            {{ event_time.strftime('%H:%M:%S') }}
-
-                        {% else %}
-
-                            Unknown time
-
-                        {% endif %}
-
-                        <br>
-
-                        <span class="pir-tag">
-                            PIR TRIGGERED
-                        </span>
-
-                    </div>
-
-                </div>
-
-                {% endfor %}
-
-            {% else %}
-
-                <div class="empty">
-
-                    No captures yet.
-
-                </div>
-
-            {% endif %}
-
-        </div>
-
+    <div class="card p-4 shadow-sm">
+      <h2>
+        Captured Photos
+        <span style="font-size: 12px; font-weight: 400; color: #666; margin-left: 8px;">(max 10 stored)</span>
+      </h2>
+      <br>
+      <div class="gallery" id="galleryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;">
+        {% if photos %}
+          {% for photo_id, event_time in photos %}
+          <div class="photo-card" style="background: #f8f9fa; border-radius: 10px; overflow: hidden; border: 1px solid #ddd; transition: 0.3s;">
+            <a href="/photo/{{ photo_id }}" target="_blank">
+              <img
+                src="/photo/{{ photo_id }}"
+                alt="Capture #{{ photo_id }}"
+                loading="lazy"
+                style="width: 100%; height: 180px; object-fit: cover; display: block;"
+              >
+            </a>
+            <div class="photo-info" style="padding: 10px; font-size: 13px; color: #333;">
+              <strong style="color: #e74c3c;">Capture #{{ photo_id }}</strong>
+              <br><br>
+              {% if event_time %}
+                {{ event_time.strftime('%Y-%m-%d') }}
+                <br>
+                {{ event_time.strftime('%H:%M:%S') }}
+              {% else %}
+                Unknown time
+              {% endif %}
+              <br>
+              <span class="pir-tag" style="display: inline-block; background: #e74c3c; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-top: 6px; letter-spacing: 0.5px;">
+                PIR TRIGGERED
+              </span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty" style="text-align: center; color: gray; padding: 40px; grid-column: 1/-1;">
+            No captures yet.
+          </div>
+        {% endif %}
+      </div>
     </div>
-
+  </div>
 </div>
+
+<style>
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.photo-card:hover {
+  transform: scale(1.03);
+  border-color: #e74c3c;
+}
+</style>
+
+<!-- CHART LIBRARY -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 
@@ -431,21 +180,21 @@ const chart = new Chart(ctx, {
 
             borderColor: "#e74c3c",
 
-            backgroundColor: "rgba(231,76,60,0.2)",
+            backgroundColor: "rgba(231,76,60,0.1)",
 
             fill: true,
 
             tension: 0.4,
 
-            borderWidth: 3,
+            borderWidth: 2,
 
             pointBackgroundColor: "#e74c3c",
 
             pointBorderColor: "#fff",
 
-            pointRadius: 6,
+            pointRadius: 5,
 
-            pointHoverRadius: 8
+            pointHoverRadius: 7
         }]
     },
 
@@ -462,7 +211,7 @@ const chart = new Chart(ctx, {
             legend: {
 
                 labels: {
-                    color: "white"
+                    color: "#000"
                 }
             },
 
@@ -484,12 +233,12 @@ const chart = new Chart(ctx, {
             x: {
 
                 ticks: {
-                    color: "white",
+                    color: "#000",
                     maxRotation: 45
                 },
 
                 grid: {
-                    color: "#2a2a2a"
+                    color: "#eee"
                 },
 
                 title: {
@@ -498,7 +247,7 @@ const chart = new Chart(ctx, {
 
                     text: "Capture Time",
 
-                    color: "#aaa"
+                    color: "#666"
                 }
             },
 
@@ -512,13 +261,13 @@ const chart = new Chart(ctx, {
 
                 ticks: {
 
-                    color: "white",
+                    color: "#000",
 
                     stepSize: 1
                 },
 
                 grid: {
-                    color: "#2a2a2a"
+                    color: "#eee"
                 },
 
                 title: {
@@ -527,7 +276,7 @@ const chart = new Chart(ctx, {
 
                     text: "Capture Number",
 
-                    color: "#aaa"
+                    color: "#666"
                 }
             }
         }
@@ -607,5 +356,4 @@ setInterval(refreshPage, 10000);
 
 </script>
 
-</body>
-</html>
+{% endblock %}
