@@ -104,7 +104,7 @@
 <script>
 
 // ======================================================
-// LIVE STREAM (FIXED)
+// LIVE STREAM (SIMPLIFIED + STABLE)
 // ======================================================
 
 const liveImg = document.getElementById("liveImg");
@@ -112,247 +112,126 @@ const noStream = document.getElementById("noStream");
 
 let streamFailures = 0;
 
-function updateStream(){
+function updateStream() {
+    const url = "/latest.jpg?t=" + Date.now();
+    liveImg.src = url;
 
-    fetch("/latest.jpg?t=" + Date.now())
-
-    .then(response => {
-
-        if(!response.ok){
-            throw new Error("No stream");
-        }
-
+    liveImg.onload = () => {
         streamFailures = 0;
-
-        liveImg.src = "/latest.jpg?t=" + Date.now();
-
         liveImg.style.display = "block";
-
         noStream.style.display = "none";
-    })
+    };
 
-    .catch(error => {
-
+    liveImg.onerror = () => {
         streamFailures++;
 
-        console.log("Camera offline");
-
-        if(streamFailures >= 5){
-
+        if (streamFailures >= 5) {
             liveImg.style.display = "none";
-
             noStream.style.display = "block";
         }
-    });
+    };
 }
 
-// refresh once every second
 setInterval(updateStream, 1000);
-
-// initial load
 updateStream();
 
 
 // ======================================================
-// GRAPH
+// CHART (FIXED - NO HTML PARSING)
 // ======================================================
 
 const labels = {{ graph_labels | tojson }};
 const values = {{ graph_values | tojson }};
 
-const ctx = document
-    .getElementById("cameraChart")
-    .getContext("2d");
+const ctx = document.getElementById("cameraChart").getContext("2d");
 
 const chart = new Chart(ctx, {
-
     type: "line",
-
     data: {
-
         labels: labels,
-
         datasets: [{
-
             label: "PIR Motion Captures",
-
             data: values,
-
             borderColor: "#e74c3c",
-
             backgroundColor: "rgba(231,76,60,0.1)",
-
             fill: true,
-
             tension: 0.4,
-
             borderWidth: 2,
-
-            pointBackgroundColor: "#e74c3c",
-
-            pointBorderColor: "#fff",
-
-            pointRadius: 5,
-
-            pointHoverRadius: 7
+            pointRadius: 4
         }]
     },
-
     options: {
-
         responsive: true,
-
         maintainAspectRatio: false,
-
-        animation: false,
-
-        plugins: {
-
-            legend: {
-
-                labels: {
-                    color: "#000"
-                }
-            },
-
-            tooltip: {
-
-                callbacks: {
-
-                    title: (items) =>
-                        "Captured at: " + items[0].label,
-
-                    label: (context) =>
-                        " Capture #" + context.raw
-                }
-            }
-        },
-
-        scales: {
-
-            x: {
-
-                ticks: {
-                    color: "#000",
-                    maxRotation: 45
-                },
-
-                grid: {
-                    color: "#eee"
-                },
-
-                title: {
-
-                    display: true,
-
-                    text: "Capture Time",
-
-                    color: "#666"
-                }
-            },
-
-            y: {
-
-                beginAtZero: true,
-
-                min: 0,
-
-                max: 15,
-
-                ticks: {
-
-                    color: "#000",
-
-                    stepSize: 1
-                },
-
-                grid: {
-                    color: "#eee"
-                },
-
-                title: {
-
-                    display: true,
-
-                    text: "Capture Number",
-
-                    color: "#666"
-                }
-            }
-        }
+        animation: false
     }
 });
 
 
 // ======================================================
-// AUTO REFRESH GALLERY + GRAPH
+// GALLERY (SAFE PARTIAL UPDATE ONLY)
 // ======================================================
 
-function refreshPage(){
+function refreshGallery() {
 
-    fetch(window.location.href)
-
-        .then(r => r.text())
-
+    fetch(window.location.href, { cache: "no-store" })
+        .then(res => res.text())
         .then(html => {
 
             const parser = new DOMParser();
-
             const doc = parser.parseFromString(html, "text/html");
 
-            // REFRESH GALLERY
+            const newGallery = doc.getElementById("galleryGrid");
+            const curGallery = document.getElementById("galleryGrid");
 
-            const newGallery =
-                doc.getElementById("galleryGrid");
-
-            const curGallery =
-                document.getElementById("galleryGrid");
-
-            if(newGallery && curGallery){
-
-                curGallery.innerHTML =
-                    newGallery.innerHTML;
+            if (newGallery && curGallery) {
+                curGallery.innerHTML = newGallery.innerHTML;
             }
+        })
+        .catch(err => console.log("Gallery refresh failed:", err));
+}
 
-            // REFRESH GRAPH
+setInterval(refreshGallery, 10000);
 
-            const scripts =
-                doc.querySelectorAll("script");
 
-            for(const s of scripts){
+// ======================================================
+// CHART UPDATE (SAFE REFRESH FROM FULL PAGE ONLY)
+// ======================================================
 
-                const labelsMatch =
-                    s.textContent.match(
-                        /const labels = (.*?);/
-                    );
+function refreshChart() {
 
-                const valuesMatch =
-                    s.textContent.match(
-                        /const values = (.*?);/
-                    );
+    fetch(window.location.href, { cache: "no-store" })
+        .then(res => res.text())
+        .then(html => {
 
-                if(labelsMatch && valuesMatch){
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
 
-                    chart.data.labels =
-                        JSON.parse(labelsMatch[1]);
+            const scripts = doc.querySelectorAll("script");
 
-                    chart.data.datasets[0].data =
-                        JSON.parse(valuesMatch[1]);
+            for (const s of scripts) {
 
-                    chart.update();
+                const labelsMatch = s.textContent.match(/const labels = (.*?);/);
+                const valuesMatch = s.textContent.match(/const values = (.*?);/);
+
+                if (labelsMatch && valuesMatch) {
+
+                    try {
+                        chart.data.labels = JSON.parse(labelsMatch[1]);
+                        chart.data.datasets[0].data = JSON.parse(valuesMatch[1]);
+                        chart.update();
+                    } catch (e) {
+                        console.log("Chart parse error:", e);
+                    }
 
                     break;
                 }
             }
         })
-
-        .catch(err =>
-            console.log("Refresh failed:", err)
-        );
+        .catch(err => console.log("Chart refresh failed:", err));
 }
 
-// refresh every 10 seconds
-setInterval(refreshPage, 10000);
+setInterval(refreshChart, 10000);
 
 </script>
 

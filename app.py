@@ -18,19 +18,6 @@ os.makedirs(STREAM_DIR, exist_ok=True)
 os.makedirs("static", exist_ok=True)
 
 # ======================================================
-# CAPTURE QUEUE — integer counter, thread-safe lock
-# ======================================================
-# FIX: was a simple boolean (pir_triggered = True/False).
-# Problem: if camera ESP missed the poll window (busy with stream timeout),
-# the flag was already reset to False and the capture was lost forever.
-#
-# Now we use a COUNTER:
-#   - PIR fires → counter += 1
-#   - Camera polls → counter > 0 → return capture:true, counter -= 1
-#   - Each PIR HIGH event is guaranteed exactly one photo, even if polled late.
-
-
-# ======================================================
 # LATEST SENSOR VALUES
 # ======================================================
 latest_pir = {
@@ -356,6 +343,11 @@ def latest():
 # ══════════════════════════════════════════════════════
 # MOTION CAPTURE — save PIR-triggered photo
 # ══════════════════════════════════════════════════════
+# KEY FIX: Do cleanup AFTER the transaction commits
+# This avoids: "Can't update table in stored function/trigger"
+# The trigger fires during INSERT, so we must commit first,
+# then do our cleanup in a separate transaction.
+# ══════════════════════════════════════════════════════
 
 @app.route("/motion_capture", methods=["POST"])
 def motion_capture():
@@ -369,13 +361,23 @@ def motion_capture():
         with get_connection() as conn:
             cursor = conn.cursor()
 
-            # 1. INSERT IMAGE
+            # STEP 1: INSERT IMAGE (trigger fires here)
             cursor.execute("""
                 INSERT INTO camera_events (image, event_time)
                 VALUES (%s, %s)
             """, (img, datetime.now()))
 
-            # 2. CLEANUP (KEEP ONLY 10)
+            # STEP 2: COMMIT FIRST (let trigger complete)
+            conn.commit()
+
+            print(f"[CAPTURE] Image inserted")
+
+            # STEP 3: NOW do cleanup (safe, separate transaction)
+            # This avoids the recursion error because:
+            # - The INSERT is already committed
+            # - The trigger has already fired and completed
+            # - We're no longer in the same transaction
+            
             cursor.execute("""
                 SELECT COUNT(*) FROM camera_events
             """)
@@ -383,20 +385,28 @@ def motion_capture():
             count = cursor.fetchone()[0]
 
             if count > 10:
+                # Delete oldest records to keep only 10
                 cursor.execute("""
                     DELETE FROM camera_events
-                    ORDER BY id ASC
-                    LIMIT %s
-                """, (count - 10,))
-
-            conn.commit()
+                    WHERE id NOT IN (
+                        SELECT id FROM camera_events
+                        ORDER BY id DESC
+                        LIMIT 10
+                    )
+                """)
+                conn.commit()
+                deleted = count - 10
+                print(f"[CLEANUP] Deleted {deleted} old photo(s), keeping 10 newest")
 
     except Exception as e:
-        print("motion_capture DB error:", e)
+        print(f"[CAPTURE] DB error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "msg": str(e)}, 500
 
-    print("Saved capture OK")
+    print("[CAPTURE] Saved OK ✓")
     return {"status": "ok"}, 200
+
 # ══════════════════════════════════════════════════════
 # GALLERY
 # ══════════════════════════════════════════════════════

@@ -43,7 +43,7 @@ void sendToFlask(float distance, const String& event) {
   }
 
   HTTPClient http;
-  http.begin("http://10.192.156.61:5000/ultson_sensor");
+  http.begin("http://10.227.19.84:5000/ultson_sensor");
   http.addHeader("Content-Type", "application/json");
   http.setTimeout(3000);
 

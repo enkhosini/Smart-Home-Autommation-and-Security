@@ -16,7 +16,7 @@ IPAddress subnet(255, 255, 255, 0);
 const String DEVICE_ID = "maambele_esp";
 
 // ESP32-CAM IP
-const String CAMERA_URL = "http://10.192.156.84/capture";
+const String CAMERA_URL = "http://10.227.19.84/capture";
 
 int pirState = LOW;
 int lastState = LOW;
@@ -38,7 +38,7 @@ void sendMotionEvent(int isInMotion) {
 
   HTTPClient http;
 
-  http.begin("http://10.192.156.61:5000/pir_sensor");
+  http.begin("http://10.227.19.61:5000/pir_sensor");
 
   http.addHeader("Content-Type", "application/json");
 
@@ -197,7 +197,7 @@ void setup() {
 
   digitalWrite(LED_PIN, LOW);
 
-  WiFi.config(local_IP, gateway, subnet);
+  // WiFi.config(local_IP, gateway, subnet);
 
   WiFi.begin(ssid, password);
 

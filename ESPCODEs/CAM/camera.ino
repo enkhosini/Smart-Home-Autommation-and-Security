@@ -14,7 +14,7 @@ const char* password = "ga_group7";
 // FLASK SERVER
 // ======================================================
 
-const String SERVER = "http://10.192.156.61:5000";
+const String SERVER = "http://10.227.19.61:5000";
 
 // ======================================================
 // CAMERA WEB SERVER
@@ -26,11 +26,11 @@ WebServer server(80);
 // STREAM SETTINGS
 // ======================================================
 
-const unsigned long STREAM_INTERVAL_MS = 100;
+const unsigned long STREAM_INTERVAL_MS = 150;  // Slightly increased to reduce load
 
-const int STREAM_TIMEOUT_MS  = 800;
+const int STREAM_TIMEOUT_MS  = 3000;  // Increased from 800ms to allow processing
 
-const int CAPTURE_TIMEOUT_MS = 5000;
+const int CAPTURE_TIMEOUT_MS = 8000;  // Increased from 5000ms
 
 // ======================================================
 // AI THINKER PIN MAP
@@ -62,6 +62,8 @@ unsigned long lastStream = 0;
 unsigned long frameCount = 0;
 
 unsigned long lastFpsLog = 0;
+
+unsigned long streamErrors = 0;
 
 // ======================================================
 // CAMERA INIT
@@ -100,13 +102,13 @@ void startCamera() {
 
   cfg.pixel_format = PIXFORMAT_JPEG;
 
-  cfg.frame_size = FRAMESIZE_VGA;
+  cfg.frame_size = FRAMESIZE_QVGA;  // QVGA = 320x240
 
-  cfg.jpeg_quality = 12;
+  cfg.jpeg_quality = 12;  // Lower quality = smaller file = faster upload
 
   cfg.fb_count = 1;
 
-  cfg.fb_location = CAMERA_FB_IN_DRAM;
+  cfg.fb_location = CAMERA_FB_IN_PSRAM;
 
   esp_err_t err = esp_camera_init(&cfg);
 
@@ -156,8 +158,10 @@ int postJpeg(
     int timeoutMs
 ) {
 
-  if (WiFi.status() != WL_CONNECTED)
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[NET] WiFi disconnected!");
     return -99;
+  }
 
   HTTPClient http;
 
@@ -178,9 +182,10 @@ int postJpeg(
   if (code < 0) {
 
     Serial.printf(
-      "[NET] POST %s failed: %s\n",
+      "[NET] POST %s failed: %s (code: %d)\n",
       endpoint.c_str(),
-      http.errorToString(code).c_str()
+      http.errorToString(code).c_str(),
+      code
     );
   }
 
@@ -199,10 +204,12 @@ void sendStreamFrame() {
 
   if (!fb) {
 
-    Serial.println("[STREAM] Frame failed");
+    Serial.println("[STREAM] Frame capture failed");
 
     return;
   }
+
+  Serial.printf("[STREAM] Sending %d bytes...\n", fb->len);
 
   int code = postJpeg(
       "/cam_stream",
@@ -216,6 +223,14 @@ void sendStreamFrame() {
   if (code == 200) {
 
     frameCount++;
+
+  } else {
+
+    streamErrors++;
+
+    if (streamErrors % 10 == 0) {
+      Serial.printf("[STREAM] Error rate: %lu errors\n", streamErrors);
+    }
   }
 }
 
@@ -231,10 +246,12 @@ void sendMotionCapture() {
 
   if (!fb) {
 
-    Serial.println("[CAPTURE] Frame failed");
+    Serial.println("[CAPTURE] Frame capture failed");
 
     return;
   }
+
+  Serial.printf("[CAPTURE] Frame size: %d bytes\n", fb->len);
 
   int code = postJpeg(
       "/motion_capture",
@@ -248,6 +265,12 @@ void sendMotionCapture() {
   if (code == 200) {
 
     Serial.println("[CAPTURE] Saved ✓");
+
+  } else if (code == 500) {
+
+    Serial.printf(
+      "[CAPTURE] Server error 500 - check Flask logs\n"
+    );
 
   } else {
 
@@ -354,11 +377,14 @@ void loop() {
   if (now - lastFpsLog >= 5000) {
 
     Serial.printf(
-      "[STREAM] %.1f FPS\n",
-      frameCount / 5.0f
+      "[STREAM] %.1f FPS | %lu errors\n",
+      frameCount / 5.0f,
+      streamErrors
     );
 
     frameCount = 0;
+
+    streamErrors = 0;
 
     lastFpsLog = now;
   }

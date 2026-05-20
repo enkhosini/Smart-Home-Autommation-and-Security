@@ -16,7 +16,7 @@ IPAddress subnet(255, 255, 255, 0);
 
 
 // ---------------- FLASK ----------------
-const char* serverURL = "http://10.192.156.61:5000/ldr_sensor";
+const char* serverURL = "http://10.227.19.84:5000/ldr_sensor";
 
 // ---------------- PINS ----------------
 const int ldrPin    = 34;
