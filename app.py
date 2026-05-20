@@ -450,7 +450,7 @@ def ldr_sensor():
         if not data:
             return {"status": "error", "message": "No JSON received"}, 400
 
-        device_id = data.get("device_id", "fanelo_esp")
+        device_id = data.get("device_id", "bridgete_esp")
         readings  = data.get("readings", {})
         value     = readings.get("value", 0)
         event     = readings.get("event", "dark")
@@ -504,7 +504,7 @@ def ultson_sensor():
         if not data:
             return {"status": "error", "message": "No JSON received"}, 400
 
-        device_name = data.get("device_id", "bridgette_esp")
+        device_name = data.get("device_id", "fanelo_esp ")
         readings    = data.get("readings", {})
         value       = readings.get("value", 0)
         event       = readings.get("event", "")
